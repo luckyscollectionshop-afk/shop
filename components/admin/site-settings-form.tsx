@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+
 import { createClient } from "@/lib/supabase/client";
 import type { HeroMedia } from "@/components/storefront/hero-carousel";
 
@@ -27,6 +29,15 @@ export type SiteSettings = {
 export type StorefrontSettings = {
   id: string;
 
+  // Social
+  social_enabled: boolean;
+  instagram_url: string | null;
+  facebook_url: string | null;
+  youtube_url: string | null;
+  whatsapp_group_url: string | null;
+  whatsapp_channel_url: string | null;
+
+  // Payment
   twint_enabled: boolean;
   twint_phone: string | null;
 
@@ -34,11 +45,13 @@ export type StorefrontSettings = {
   bank_account_name: string | null;
   bank_iban: string | null;
 
+  // Shipping
   shipping_enabled: boolean;
   shipping_method: string | null;
   shipping_price: number;
   free_shipping: boolean;
 
+  // Store
   store_name: string | null;
   store_address: string | null;
   store_city: string | null;
@@ -74,67 +87,155 @@ export function SiteSettingsForm({
 }) {
   const router = useRouter();
 
-  const initial = { ...defaults, ...settings };
+  /*
+   * ---------------------------------------------------------
+   * SOCIAL MEDIA
+   * ---------------------------------------------------------
+   */
 
-  const [theme, setTheme] = useState<SiteSettings["theme"]>(initial.theme);
+  const [socialEnabled, setSocialEnabled] = useState(
+    storefrontSettings?.social_enabled ?? true,
+  );
+
+  const [instagramUrl, setInstagramUrl] = useState(
+    storefrontSettings?.instagram_url ?? "",
+  );
+
+  const [facebookUrl, setFacebookUrl] = useState(
+    storefrontSettings?.facebook_url ?? "",
+  );
+
+  const [youtubeUrl, setYoutubeUrl] = useState(
+    storefrontSettings?.youtube_url ?? "",
+  );
+
+  const [whatsappGroupUrl, setWhatsappGroupUrl] = useState(
+    storefrontSettings?.whatsapp_group_url ?? "",
+  );
+
+  const [whatsappChannelUrl, setWhatsappChannelUrl] = useState(
+    storefrontSettings?.whatsapp_channel_url ?? "",
+  );
+
+  /*
+   * ---------------------------------------------------------
+   * SITE / HERO
+   * ---------------------------------------------------------
+   */
+
+  const initial = {
+    ...defaults,
+    ...settings,
+  };
+
+  const [theme, setTheme] = useState<SiteSettings["theme"]>(
+    initial.theme,
+  );
+
   const [title, setTitle] = useState(initial.hero_title);
-  const [description, setDescription] = useState(initial.hero_description);
+
+  const [description, setDescription] = useState(
+    initial.hero_description,
+  );
+
   const [media, setMedia] = useState<HeroMedia[]>(
     initial.hero_media ?? [],
   );
 
-  const [homepageCategoryIds, setHomepageCategoryIds] = useState<string[]>(
-    settings?.homepage_category_ids ?? [],
-  );
+  const [homepageCategoryIds, setHomepageCategoryIds] =
+    useState<string[]>(
+      settings?.homepage_category_ids ?? [],
+    );
+
+  /*
+   * ---------------------------------------------------------
+   * PAYMENT
+   * ---------------------------------------------------------
+   */
 
   const [twintEnabled, setTwintEnabled] = useState(
     storefrontSettings?.twint_enabled ?? false,
   );
+
   const [twintPhone, setTwintPhone] = useState(
     storefrontSettings?.twint_phone ?? "",
   );
 
-  const [bankTransferEnabled, setBankTransferEnabled] = useState(
-    storefrontSettings?.bank_transfer_enabled ?? false,
-  );
+  const [bankTransferEnabled, setBankTransferEnabled] =
+    useState(
+      storefrontSettings?.bank_transfer_enabled ?? false,
+    );
+
   const [bankAccountName, setBankAccountName] = useState(
     storefrontSettings?.bank_account_name ?? "",
   );
+
   const [bankIban, setBankIban] = useState(
     storefrontSettings?.bank_iban ?? "",
   );
 
+  /*
+   * ---------------------------------------------------------
+   * SHIPPING
+   * ---------------------------------------------------------
+   */
+
   const [shippingEnabled, setShippingEnabled] = useState(
     storefrontSettings?.shipping_enabled ?? true,
   );
+
   const [shippingMethod, setShippingMethod] = useState(
     storefrontSettings?.shipping_method ?? "",
   );
+
   const [shippingPrice, setShippingPrice] = useState(
     storefrontSettings?.shipping_price?.toString() ?? "0",
   );
+
   const [freeShipping, setFreeShipping] = useState(
     storefrontSettings?.free_shipping ?? false,
   );
 
+  /*
+   * ---------------------------------------------------------
+   * STORE ADDRESS
+   * ---------------------------------------------------------
+   */
+
   const [storeName, setStoreName] = useState(
     storefrontSettings?.store_name ?? "",
   );
+
   const [storeAddress, setStoreAddress] = useState(
     storefrontSettings?.store_address ?? "",
   );
+
   const [storeCity, setStoreCity] = useState(
     storefrontSettings?.store_city ?? "",
   );
+
   const [storePostalCode, setStorePostalCode] = useState(
     storefrontSettings?.store_postal_code ?? "",
   );
+
   const [storeCountry, setStoreCountry] = useState(
     storefrontSettings?.store_country ?? "Switzerland",
   );
 
+  /*
+   * ---------------------------------------------------------
+   * UI STATE
+   * ---------------------------------------------------------
+   */
+
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+
+  /*
+   * ---------------------------------------------------------
+   * HERO MEDIA UPLOAD
+   * ---------------------------------------------------------
+   */
 
   async function uploadHeroMedia(
     event: React.ChangeEvent<HTMLInputElement>,
@@ -163,7 +264,9 @@ export function SiteSettingsForm({
           const data = await response.json();
 
           if (!response.ok) {
-            throw new Error(data.error || "Media upload failed.");
+            throw new Error(
+              data.error || "Media upload failed.",
+            );
           }
 
           return {
@@ -187,9 +290,18 @@ export function SiteSettingsForm({
     }
   }
 
+  /*
+   * ---------------------------------------------------------
+   * SAVE EVERYTHING
+   * ---------------------------------------------------------
+   */
+
   async function saveSettings() {
     if (!title.trim() || !description.trim()) {
-      return alert("Please provide a hero title and description.");
+      alert(
+        "Please provide a hero title and description.",
+      );
+      return;
     }
 
     setSaving(true);
@@ -197,54 +309,152 @@ export function SiteSettingsForm({
     try {
       const supabase = createClient();
 
-      const { error: siteSettingsError } = await supabase
-        .from("site_settings")
-        .upsert({
-          id: true,
-          theme,
-          hero_title: title.trim(),
-          hero_description: description.trim(),
-          hero_media: media,
-          homepage_category_ids: homepageCategoryIds,
-        });
+      /*
+       * -----------------------------------------------------
+       * SAVE SITE SETTINGS
+       * -----------------------------------------------------
+       */
+
+      const { error: siteSettingsError } =
+        await supabase
+          .from("site_settings")
+          .upsert(
+            {
+              id: true,
+              theme,
+              hero_title: title.trim(),
+              hero_description: description.trim(),
+              hero_media: media,
+              homepage_category_ids:
+                homepageCategoryIds,
+            },
+            {
+              onConflict: "id",
+            },
+          );
 
       if (siteSettingsError) {
         throw siteSettingsError;
       }
 
-      const { error: storefrontError } = await supabase
-        .from("storefront_settings")
-        .upsert({
-          id: storefrontSettings?.id ?? undefined,
+      /*
+       * -----------------------------------------------------
+       * SAVE STOREFRONT SETTINGS
+       * -----------------------------------------------------
+       */
 
-          twint_enabled: twintEnabled,
-          twint_phone: twintPhone.trim() || null,
+      const storefrontData = {
+        /*
+         * Social
+         */
+        social_enabled: socialEnabled,
 
-          bank_transfer_enabled: bankTransferEnabled,
-          bank_account_name: bankAccountName.trim() || null,
-          bank_iban: bankIban.trim() || null,
+        instagram_url:
+          instagramUrl.trim() || null,
 
-          shipping_enabled: shippingEnabled,
-          shipping_method: shippingMethod.trim() || null,
-          shipping_price: freeShipping
-            ? 0
-            : Number(shippingPrice) || 0,
-          free_shipping: freeShipping,
+        facebook_url:
+          facebookUrl.trim() || null,
 
-          store_name: storeName.trim() || null,
-          store_address: storeAddress.trim() || null,
-          store_city: storeCity.trim() || null,
-          store_postal_code: storePostalCode.trim() || null,
-          store_country: storeCountry.trim() || "Switzerland",
-        });
+        youtube_url:
+          youtubeUrl.trim() || null,
+
+        whatsapp_group_url:
+          whatsappGroupUrl.trim() || null,
+
+        whatsapp_channel_url:
+          whatsappChannelUrl.trim() || null,
+
+        /*
+         * Payment
+         */
+        twint_enabled: twintEnabled,
+
+        twint_phone:
+          twintPhone.trim() || null,
+
+        bank_transfer_enabled:
+          bankTransferEnabled,
+
+        bank_account_name:
+          bankAccountName.trim() || null,
+
+        bank_iban:
+          bankIban.trim() || null,
+
+        /*
+         * Shipping
+         */
+        shipping_enabled: shippingEnabled,
+
+        shipping_method:
+          shippingMethod.trim() || null,
+
+        shipping_price: freeShipping
+          ? 0
+          : Number(shippingPrice) || 0,
+
+        free_shipping: freeShipping,
+
+        /*
+         * Store
+         */
+        store_name:
+          storeName.trim() || null,
+
+        store_address:
+          storeAddress.trim() || null,
+
+        store_city:
+          storeCity.trim() || null,
+
+        store_postal_code:
+          storePostalCode.trim() || null,
+
+        store_country:
+          storeCountry.trim() || "Switzerland",
+      };
+
+      /*
+       * We already have one storefront_settings row.
+       *
+       * Use its UUID when available.
+       */
+      const payload = storefrontSettings?.id
+        ? {
+            id: storefrontSettings.id,
+            ...storefrontData,
+          }
+        : storefrontData;
+
+      const { error: storefrontError } =
+        await supabase
+          .from("storefront_settings")
+          .upsert(payload, {
+            onConflict: "id",
+          });
 
       if (storefrontError) {
         throw storefrontError;
       }
 
+      /*
+       * -----------------------------------------------------
+       * SUCCESS
+       * -----------------------------------------------------
+       */
+
+      alert(
+        "Storefront settings saved successfully.",
+      );
+
       router.push("/admin");
       router.refresh();
     } catch (error) {
+      console.error(
+        "Storefront settings save error:",
+        error,
+      );
+
       alert(
         error instanceof Error
           ? error.message
@@ -255,24 +465,40 @@ export function SiteSettingsForm({
     }
   }
 
+  /*
+   * ---------------------------------------------------------
+   * PAGE
+   * ---------------------------------------------------------
+   */
+
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold">Storefront settings</h1>
+        <h1 className="text-3xl font-bold">
+          Storefront settings
+        </h1>
 
         <p className="mt-2 text-muted-foreground">
-          Choose your site palette and edit the homepage hero.
+          Choose your site palette and edit the homepage
+          hero.
         </p>
       </div>
 
       <div className="space-y-4">
+
+        {/* =====================================================
+            COLOUR PALETTE
+        ====================================================== */}
+
         <Card>
           <CardHeader>
             <CardTitle>Colour palette</CardTitle>
           </CardHeader>
 
           <CardContent>
-            <Label htmlFor="theme">Site mode</Label>
+            <Label htmlFor="theme">
+              Site mode
+            </Label>
 
             <select
               id="theme"
@@ -299,14 +525,23 @@ export function SiteSettingsForm({
           </CardContent>
         </Card>
 
+        {/* =====================================================
+            HERO
+        ====================================================== */}
+
         <Card>
           <CardHeader>
-            <CardTitle>Homepage hero carousel</CardTitle>
+            <CardTitle>
+              Homepage hero carousel
+            </CardTitle>
           </CardHeader>
 
           <CardContent className="space-y-4">
+
             <div className="space-y-2">
-              <Label htmlFor="hero-title">Title</Label>
+              <Label htmlFor="hero-title">
+                Title
+              </Label>
 
               <Input
                 id="hero-title"
@@ -401,229 +636,440 @@ export function SiteSettingsForm({
                 ))}
               </div>
             )}
+
           </CardContent>
         </Card>
 
-       <Card>
-  <CardHeader>
-    <CardTitle>Homepage Product Strips</CardTitle>
-
-    <p className="text-sm text-muted-foreground">
-      Choose which product strips appear on the homepage and arrange
-      them in the order you want.
-    </p>
-  </CardHeader>
-
-  <CardContent className="space-y-4">
-    {/* Selected strips */}
-    {homepageCategoryIds.length > 0 && (
-      <div className="space-y-2">
-        <Label>Homepage order</Label>
-
-        <div className="space-y-2">
-          {homepageCategoryIds.map((id, index) => {
-            const isAll = id === ALL_PRODUCTS_ID;
-            const isPrebooking = id === PREBOOKING_ID;
-
-            const category = categories.find(
-              (item) => item.id === id,
-            );
-
-            const label = isAll
-              ? "ALL PRODUCTS"
-              : isPrebooking
-                ? "PREBOOKING"
-                : category?.name ?? "Unknown category";
-
-            return (
-              <div
-                key={id}
-                className="flex items-center justify-between gap-3 rounded-lg border p-3"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-sm font-medium">
-                    {index + 1}
-                  </span>
-
-                  <span className="font-medium">
-                    {label}
-                  </span>
-                </div>
-
-                <div className="flex gap-1">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={index === 0}
-                    onClick={() => {
-                      setHomepageCategoryIds((current) => {
-                        const next = [...current];
-
-                        [next[index - 1], next[index]] = [
-                          next[index],
-                          next[index - 1],
-                        ];
-
-                        return next;
-                      });
-                    }}
-                  >
-                    ↑
-                  </Button>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={
-                      index === homepageCategoryIds.length - 1
-                    }
-                    onClick={() => {
-                      setHomepageCategoryIds((current) => {
-                        const next = [...current];
-
-                        [next[index], next[index + 1]] = [
-                          next[index + 1],
-                          next[index],
-                        ];
-
-                        return next;
-                      });
-                    }}
-                  >
-                    ↓
-                  </Button>
-
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setHomepageCategoryIds((current) =>
-                        current.filter((item) => item !== id),
-                      );
-                    }}
-                  >
-                    Remove
-                  </Button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    )}
-
-    {/* Available strips */}
-    <div className="space-y-2">
-      <Label>Add product strip</Label>
-
-      <div className="max-h-[280px] space-y-2 overflow-y-auto rounded-lg border p-2">
-        {/* ALL */}
-        <label className="flex cursor-pointer items-center gap-3 rounded-lg border p-3 hover:bg-muted/50">
-          <input
-            type="checkbox"
-            checked={homepageCategoryIds.includes(
-              ALL_PRODUCTS_ID,
-            )}
-            onChange={(event) => {
-              setHomepageCategoryIds((current) =>
-                event.target.checked
-                  ? [...current, ALL_PRODUCTS_ID]
-                  : current.filter(
-                      (id) => id !== ALL_PRODUCTS_ID,
-                    ),
-              );
-            }}
-          />
-
-          <span className="font-medium">
-            ALL PRODUCTS
-          </span>
-        </label>
-
-        {/* PREBOOKING */}
-        <label className="flex cursor-pointer items-center gap-3 rounded-lg border p-3 hover:bg-muted/50">
-          <input
-            type="checkbox"
-            checked={homepageCategoryIds.includes(
-              PREBOOKING_ID,
-            )}
-            onChange={(event) => {
-              setHomepageCategoryIds((current) =>
-                event.target.checked
-                  ? [...current, PREBOOKING_ID]
-                  : current.filter(
-                      (id) => id !== PREBOOKING_ID,
-                    ),
-              );
-            }}
-          />
-
-          <span className="font-medium">
-            PREBOOKING
-          </span>
-        </label>
-
-        {/* CATEGORIES */}
-        {categories.map((category) => {
-          const checked = homepageCategoryIds.includes(
-            category.id,
-          );
-
-          return (
-            <label
-              key={category.id}
-              className="flex cursor-pointer items-center gap-3 rounded-lg border p-3 hover:bg-muted/50"
-            >
-              <input
-                type="checkbox"
-                checked={checked}
-                onChange={(event) => {
-                  setHomepageCategoryIds((current) =>
-                    event.target.checked
-                      ? [...current, category.id]
-                      : current.filter(
-                          (id) => id !== category.id,
-                        ),
-                  );
-                }}
-              />
-
-              <span className="font-medium">
-                {category.name}
-              </span>
-            </label>
-          );
-        })}
-      </div>
-
-      <p className="text-xs text-muted-foreground">
-        Scroll to see more categories. The box shows about 5
-        items at a time.
-      </p>
-    </div>
-  </CardContent>
-</Card>
+        {/* =====================================================
+            HOMEPAGE PRODUCT STRIPS
+        ====================================================== */}
 
         <Card>
           <CardHeader>
-            <CardTitle>Payment Methods</CardTitle>
+            <CardTitle>
+              Homepage Product Strips
+            </CardTitle>
 
             <p className="text-sm text-muted-foreground">
-              Choose which manual payment methods customers can use.
+              Choose which product strips appear on the
+              homepage and arrange them in the order you
+              want.
+            </p>
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+
+            {homepageCategoryIds.length > 0 && (
+              <div className="space-y-2">
+                <Label>
+                  Homepage order
+                </Label>
+
+                <div className="space-y-2">
+                  {homepageCategoryIds.map(
+                    (id, index) => {
+                      const isAll =
+                        id === ALL_PRODUCTS_ID;
+
+                      const isPrebooking =
+                        id === PREBOOKING_ID;
+
+                      const category =
+                        categories.find(
+                          (item) => item.id === id,
+                        );
+
+                      const label = isAll
+                        ? "ALL PRODUCTS"
+                        : isPrebooking
+                          ? "PREBOOKING"
+                          : (category?.name ??
+                            "Unknown category");
+
+                      return (
+                        <div
+                          key={id}
+                          className="flex items-center justify-between gap-3 rounded-lg border p-3"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-sm font-medium">
+                              {index + 1}
+                            </span>
+
+                            <span className="font-medium">
+                              {label}
+                            </span>
+                          </div>
+
+                          <div className="flex gap-1">
+
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={index === 0}
+                              onClick={() => {
+                                setHomepageCategoryIds(
+                                  (current) => {
+                                    const next = [
+                                      ...current,
+                                    ];
+
+                                    [
+                                      next[index - 1],
+                                      next[index],
+                                    ] = [
+                                      next[index],
+                                      next[index - 1],
+                                    ];
+
+                                    return next;
+                                  },
+                                );
+                              }}
+                            >
+                              ↑
+                            </Button>
+
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={
+                                index ===
+                                homepageCategoryIds.length -
+                                  1
+                              }
+                              onClick={() => {
+                                setHomepageCategoryIds(
+                                  (current) => {
+                                    const next = [
+                                      ...current,
+                                    ];
+
+                                    [
+                                      next[index],
+                                      next[index + 1],
+                                    ] = [
+                                      next[index + 1],
+                                      next[index],
+                                    ];
+
+                                    return next;
+                                  },
+                                );
+                              }}
+                            >
+                              ↓
+                            </Button>
+
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setHomepageCategoryIds(
+                                  (current) =>
+                                    current.filter(
+                                      (item) =>
+                                        item !== id,
+                                    ),
+                                );
+                              }}
+                            >
+                              Remove
+                            </Button>
+
+                          </div>
+                        </div>
+                      );
+                    },
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label>
+                Add product strip
+              </Label>
+
+              <div className="max-h-[280px] space-y-2 overflow-y-auto rounded-lg border p-2">
+
+                {/* ALL PRODUCTS */}
+
+                <label className="flex cursor-pointer items-center gap-3 rounded-lg border p-3 hover:bg-muted/50">
+                  <input
+                    type="checkbox"
+                    checked={homepageCategoryIds.includes(
+                      ALL_PRODUCTS_ID,
+                    )}
+                    onChange={(event) => {
+                      setHomepageCategoryIds(
+                        (current) =>
+                          event.target.checked
+                            ? [
+                                ...current,
+                                ALL_PRODUCTS_ID,
+                              ]
+                            : current.filter(
+                                (id) =>
+                                  id !==
+                                  ALL_PRODUCTS_ID,
+                              ),
+                      );
+                    }}
+                  />
+
+                  <span className="font-medium">
+                    ALL PRODUCTS
+                  </span>
+                </label>
+
+                {/* PREBOOKING */}
+
+                <label className="flex cursor-pointer items-center gap-3 rounded-lg border p-3 hover:bg-muted/50">
+                  <input
+                    type="checkbox"
+                    checked={homepageCategoryIds.includes(
+                      PREBOOKING_ID,
+                    )}
+                    onChange={(event) => {
+                      setHomepageCategoryIds(
+                        (current) =>
+                          event.target.checked
+                            ? [
+                                ...current,
+                                PREBOOKING_ID,
+                              ]
+                            : current.filter(
+                                (id) =>
+                                  id !==
+                                  PREBOOKING_ID,
+                              ),
+                      );
+                    }}
+                  />
+
+                  <span className="font-medium">
+                    PREBOOKING
+                  </span>
+                </label>
+
+                {/* CATEGORIES */}
+
+                {categories.map((category) => {
+                  const checked =
+                    homepageCategoryIds.includes(
+                      category.id,
+                    );
+
+                  return (
+                    <label
+                      key={category.id}
+                      className="flex cursor-pointer items-center gap-3 rounded-lg border p-3 hover:bg-muted/50"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(event) => {
+                          setHomepageCategoryIds(
+                            (current) =>
+                              event.target.checked
+                                ? [
+                                    ...current,
+                                    category.id,
+                                  ]
+                                : current.filter(
+                                    (id) =>
+                                      id !==
+                                      category.id,
+                                  ),
+                          );
+                        }}
+                      />
+
+                      <span className="font-medium">
+                        {category.name}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                Scroll to see more categories. The box
+                shows about 5 items at a time.
+              </p>
+            </div>
+
+          </CardContent>
+        </Card>
+
+        {/* =====================================================
+            SOCIAL MEDIA
+        ====================================================== */}
+
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              Social Media
+            </CardTitle>
+
+            <p className="text-sm text-muted-foreground">
+              Add your social media and WhatsApp links.
+              These will appear in the floating social
+              panel on the homepage.
+            </p>
+          </CardHeader>
+
+          <CardContent className="space-y-5">
+
+            <label className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={socialEnabled}
+                onChange={(event) =>
+                  setSocialEnabled(
+                    event.target.checked,
+                  )
+                }
+              />
+
+              <span className="font-medium">
+                Show social media on homepage
+              </span>
+            </label>
+
+            {socialEnabled && (
+              <div className="space-y-4">
+
+                <div className="space-y-2">
+                  <Label htmlFor="instagram-url">
+                    Instagram
+                  </Label>
+
+                  <Input
+                    id="instagram-url"
+                    value={instagramUrl}
+                    onChange={(event) =>
+                      setInstagramUrl(
+                        event.target.value,
+                      )
+                    }
+                    placeholder="https://www.instagram.com/yourpage"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="facebook-url">
+                    Facebook
+                  </Label>
+
+                  <Input
+                    id="facebook-url"
+                    value={facebookUrl}
+                    onChange={(event) =>
+                      setFacebookUrl(
+                        event.target.value,
+                      )
+                    }
+                    placeholder="https://www.facebook.com/yourpage"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="youtube-url">
+                    YouTube
+                  </Label>
+
+                  <Input
+                    id="youtube-url"
+                    value={youtubeUrl}
+                    onChange={(event) =>
+                      setYoutubeUrl(
+                        event.target.value,
+                      )
+                    }
+                    placeholder="https://www.youtube.com/@yourchannel"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="whatsapp-group-url">
+                    WhatsApp Group
+                  </Label>
+
+                  <Input
+                    id="whatsapp-group-url"
+                    value={whatsappGroupUrl}
+                    onChange={(event) =>
+                      setWhatsappGroupUrl(
+                        event.target.value,
+                      )
+                    }
+                    placeholder="https://chat.whatsapp.com/..."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="whatsapp-channel-url">
+                    WhatsApp Channel
+                  </Label>
+
+                  <Input
+                    id="whatsapp-channel-url"
+                    value={whatsappChannelUrl}
+                    onChange={(event) =>
+                      setWhatsappChannelUrl(
+                        event.target.value,
+                      )
+                    }
+                    placeholder="https://whatsapp.com/channel/..."
+                  />
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                  Leave any field empty if you do not
+                  want that social network or WhatsApp
+                  option displayed.
+                </p>
+
+              </div>
+            )}
+
+          </CardContent>
+        </Card>
+
+        {/* =====================================================
+            PAYMENT
+        ====================================================== */}
+
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              Payment Methods
+            </CardTitle>
+
+            <p className="text-sm text-muted-foreground">
+              Choose which manual payment methods
+              customers can use.
             </p>
           </CardHeader>
 
           <CardContent className="space-y-6">
+
+            {/* TWINT */}
+
             <div className="space-y-3">
               <label className="flex items-center gap-3">
                 <input
                   type="checkbox"
                   checked={twintEnabled}
                   onChange={(event) =>
-                    setTwintEnabled(event.target.checked)
+                    setTwintEnabled(
+                      event.target.checked,
+                    )
                   }
                 />
 
@@ -642,13 +1088,17 @@ export function SiteSettingsForm({
                     id="twint-phone"
                     value={twintPhone}
                     onChange={(event) =>
-                      setTwintPhone(event.target.value)
+                      setTwintPhone(
+                        event.target.value,
+                      )
                     }
                     placeholder="+41 ..."
                   />
                 </div>
               )}
             </div>
+
+            {/* BANK TRANSFER */}
 
             <div className="space-y-3">
               <label className="flex items-center gap-3">
@@ -669,6 +1119,7 @@ export function SiteSettingsForm({
 
               {bankTransferEnabled && (
                 <div className="space-y-4">
+
                   <div className="space-y-2">
                     <Label htmlFor="bank-account-name">
                       Account name
@@ -695,33 +1146,47 @@ export function SiteSettingsForm({
                       id="bank-iban"
                       value={bankIban}
                       onChange={(event) =>
-                        setBankIban(event.target.value)
+                        setBankIban(
+                          event.target.value,
+                        )
                       }
                       placeholder="CH..."
                     />
                   </div>
+
                 </div>
               )}
             </div>
+
           </CardContent>
         </Card>
 
+        {/* =====================================================
+            SHIPPING
+        ====================================================== */}
+
         <Card>
           <CardHeader>
-            <CardTitle>Shipping</CardTitle>
+            <CardTitle>
+              Shipping
+            </CardTitle>
 
             <p className="text-sm text-muted-foreground">
-              Configure the shipping method and price shown during checkout.
+              Configure the shipping method and price
+              shown during checkout.
             </p>
           </CardHeader>
 
           <CardContent className="space-y-4">
+
             <label className="flex items-center gap-3">
               <input
                 type="checkbox"
                 checked={shippingEnabled}
                 onChange={(event) =>
-                  setShippingEnabled(event.target.checked)
+                  setShippingEnabled(
+                    event.target.checked,
+                  )
                 }
               />
 
@@ -741,7 +1206,9 @@ export function SiteSettingsForm({
                     id="shipping-method"
                     value={shippingMethod}
                     onChange={(event) =>
-                      setShippingMethod(event.target.value)
+                      setShippingMethod(
+                        event.target.value,
+                      )
                     }
                     placeholder="Swiss Post"
                   />
@@ -759,7 +1226,9 @@ export function SiteSettingsForm({
                     step="0.01"
                     value={shippingPrice}
                     onChange={(event) =>
-                      setShippingPrice(event.target.value)
+                      setShippingPrice(
+                        event.target.value,
+                      )
                     }
                     disabled={freeShipping}
                   />
@@ -770,7 +1239,9 @@ export function SiteSettingsForm({
                     type="checkbox"
                     checked={freeShipping}
                     onChange={(event) =>
-                      setFreeShipping(event.target.checked)
+                      setFreeShipping(
+                        event.target.checked,
+                      )
                     }
                   />
 
@@ -780,19 +1251,28 @@ export function SiteSettingsForm({
                 </label>
               </>
             )}
+
           </CardContent>
         </Card>
 
+        {/* =====================================================
+            STORE ADDRESS
+        ====================================================== */}
+
         <Card>
           <CardHeader>
-            <CardTitle>Store / Admin Address</CardTitle>
+            <CardTitle>
+              Store / Admin Address
+            </CardTitle>
 
             <p className="text-sm text-muted-foreground">
-              This address can later be used for shipping and returns.
+              This address can later be used for shipping
+              and returns.
             </p>
           </CardHeader>
 
           <CardContent className="space-y-4">
+
             <div className="space-y-2">
               <Label htmlFor="store-name">
                 Store name
@@ -802,7 +1282,9 @@ export function SiteSettingsForm({
                 id="store-name"
                 value={storeName}
                 onChange={(event) =>
-                  setStoreName(event.target.value)
+                  setStoreName(
+                    event.target.value,
+                  )
                 }
               />
             </div>
@@ -816,12 +1298,15 @@ export function SiteSettingsForm({
                 id="store-address"
                 value={storeAddress}
                 onChange={(event) =>
-                  setStoreAddress(event.target.value)
+                  setStoreAddress(
+                    event.target.value,
+                  )
                 }
               />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
+
               <div className="space-y-2">
                 <Label htmlFor="store-postal-code">
                   Postal code
@@ -831,7 +1316,9 @@ export function SiteSettingsForm({
                   id="store-postal-code"
                   value={storePostalCode}
                   onChange={(event) =>
-                    setStorePostalCode(event.target.value)
+                    setStorePostalCode(
+                      event.target.value,
+                    )
                   }
                 />
               </div>
@@ -845,10 +1332,13 @@ export function SiteSettingsForm({
                   id="store-city"
                   value={storeCity}
                   onChange={(event) =>
-                    setStoreCity(event.target.value)
+                    setStoreCity(
+                      event.target.value,
+                    )
                   }
                 />
               </div>
+
             </div>
 
             <div className="space-y-2">
@@ -860,18 +1350,28 @@ export function SiteSettingsForm({
                 id="store-country"
                 value={storeCountry}
                 onChange={(event) =>
-                  setStoreCountry(event.target.value)
+                  setStoreCountry(
+                    event.target.value,
+                  )
                 }
               />
             </div>
+
           </CardContent>
         </Card>
 
+        {/* =====================================================
+            BUTTONS
+        ====================================================== */}
+
         <div className="flex justify-end gap-3">
+
           <Button
             type="button"
             variant="outline"
-            onClick={() => router.push("/admin")}
+            onClick={() =>
+              router.push("/admin")
+            }
           >
             Cancel
           </Button>
@@ -881,9 +1381,13 @@ export function SiteSettingsForm({
             onClick={saveSettings}
             disabled={saving || uploading}
           >
-            {saving ? "Saving..." : "Save storefront"}
+            {saving
+              ? "Saving..."
+              : "Save storefront"}
           </Button>
+
         </div>
+
       </div>
     </main>
   );

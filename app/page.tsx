@@ -10,6 +10,7 @@ import {
   ProductCarousel,
   type CarouselProduct,
 } from "@/components/storefront/product-carousel";
+import { SocialFloat } from "@/components/storefront/social-float";
 import SiteHeader from "@/components/storefront/site-header";
 
 type DisplaySettings = {
@@ -62,6 +63,7 @@ export default async function Home() {
       data: { user },
     },
     { data: savedSettings },
+    { data: socialSettings },
   ] = await Promise.all([
     supabase.auth.getUser(),
 
@@ -72,6 +74,19 @@ export default async function Home() {
       )
       .eq("id", true)
       .maybeSingle(),
+    supabase
+      .from("storefront_settings")
+      .select(
+        `
+        social_enabled,
+        instagram_url,
+        facebook_url,
+        youtube_url,
+        whatsapp_group_url,
+        whatsapp_channel_url
+      `,
+      )
+      .maybeSingle(),
   ]);
 
   let isAdmin = false;
@@ -79,17 +94,9 @@ export default async function Home() {
 
   if (user) {
     const [{ data: profile }, { data: cart }] = await Promise.all([
-      supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .maybeSingle(),
+      supabase.from("profiles").select("role").eq("id", user.id).maybeSingle(),
 
-      supabase
-        .from("carts")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle(),
+      supabase.from("carts").select("id").eq("user_id", user.id).maybeSingle(),
     ]);
 
     isAdmin = profile?.role === "admin";
@@ -154,13 +161,11 @@ export default async function Home() {
             `,
           )
           .eq("active", true)
+            .order("created_at", { ascending: false })
       : { data: [], error: null };
 
   if (allProductsError) {
-    console.error(
-      "Homepage all products loading error:",
-      allProductsError,
-    );
+    console.error("Homepage all products loading error:", allProductsError);
   }
 
   const allProducts = (allProductsData ?? []) as StoreProduct[];
@@ -168,12 +173,11 @@ export default async function Home() {
   /*
    * Load products belonging to selected categories.
    */
-  const { data: categoryLinks, error: productsError } =
-    categoryIds.length
-      ? await supabase
-          .from("product_categories")
-          .select(
-            `
+  const { data: categoryLinks, error: productsError } = categoryIds.length
+    ? await supabase
+        .from("product_categories")
+        .select(
+          `
               category_id,
               product:products(
                 id,
@@ -185,24 +189,18 @@ export default async function Home() {
                 active
               )
             `,
-          )
-          .in("category_id", categoryIds)
-      : { data: [], error: null };
+        )
+        .in("category_id", categoryIds)
+    : { data: [], error: null };
 
   if (productsError) {
-    console.error(
-      "Homepage category products loading error:",
-      productsError,
-    );
+    console.error("Homepage category products loading error:", productsError);
   }
 
   const productsByCategory = new Map<string, StoreProduct[]>();
 
   for (const link of categoryLinks ?? []) {
-    const product = link.product as
-      | StoreProduct
-      | StoreProduct[]
-      | null;
+    const product = link.product as StoreProduct | StoreProduct[] | null;
 
     if (!product) continue;
 
@@ -210,8 +208,7 @@ export default async function Home() {
 
     if (!item || !item.active) continue;
 
-    const existing =
-      productsByCategory.get(link.category_id) ?? [];
+    const existing = productsByCategory.get(link.category_id) ?? [];
 
     if (!existing.some((p) => p.id === item.id)) {
       existing.push(item);
@@ -219,7 +216,13 @@ export default async function Home() {
 
     productsByCategory.set(link.category_id, existing);
   }
+// Keep product order deterministic so server and client
+// render the same products in the same positions.
+allProducts.sort((a, b) => a.name.localeCompare(b.name));
 
+for (const products of productsByCategory.values()) {
+  products.sort((a, b) => a.name.localeCompare(b.name));
+}
   /*
    * Build the homepage strips IN THE EXACT ORDER
    * chosen by the admin.
@@ -280,9 +283,7 @@ export default async function Home() {
     /*
      * NORMAL CATEGORY
      */
-    const category = (categories ?? []).find(
-      (item) => item.id === stripId,
-    );
+    const category = (categories ?? []).find((item) => item.id === stripId);
 
     if (!category) continue;
 
@@ -299,10 +300,19 @@ export default async function Home() {
     <main
       className={`site-theme-${settings.theme} min-h-screen bg-background text-foreground`}
     >
-      <SiteHeader
-        isLoggedIn={!!user}
-        isAdmin={isAdmin}
-        cartCount={cartCount}
+      <SiteHeader isLoggedIn={!!user} isAdmin={isAdmin} cartCount={cartCount} />
+
+      <SocialFloat
+        settings={
+          socialSettings ?? {
+            social_enabled: false,
+            instagram_url: null,
+            facebook_url: null,
+            youtube_url: null,
+            whatsapp_group_url: null,
+            whatsapp_channel_url: null,
+          }
+        }
       />
 
       {/* HERO */}
@@ -348,14 +358,9 @@ export default async function Home() {
       </section>
 
       {/* PRODUCT STRIPS */}
-      <section
-        id="products"
-        className="mx-auto max-w-6xl px-4 py-14 sm:px-6"
-      >
+      <section id="products" className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
         <div className="mb-8">
-          <p className="text-sm font-medium text-primary">
-            DISCOVER
-          </p>
+          <p className="text-sm font-medium text-primary">DISCOVER</p>
 
           <h2 className="mt-2 text-3xl font-semibold tracking-tight">
             Our collection
@@ -368,9 +373,7 @@ export default async function Home() {
               <div key={strip.id}>
                 <div className="mb-4 flex items-end justify-between gap-4">
                   <div>
-                    <h3 className="text-2xl font-semibold">
-                      {strip.name}
-                    </h3>
+                    <h3 className="text-2xl font-semibold">{strip.name}</h3>
                   </div>
 
                   {strip.type === "category" && strip.slug ? (
@@ -392,9 +395,7 @@ export default async function Home() {
 
                 {strip.products.length > 0 ? (
                   <ProductCarousel
-                    products={
-                      strip.products as CarouselProduct[]
-                    }
+                    products={strip.products as CarouselProduct[]}
                   />
                 ) : (
                   <p className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
