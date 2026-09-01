@@ -1,17 +1,32 @@
 "use client";
 
-import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
+import { FormEvent, Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
+
+  const redirectTo = searchParams.get("redirectTo") || "/";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  function getSafeRedirect(path: string) {
+    if (path.startsWith("/") && !path.startsWith("//")) {
+      return path;
+    }
+
+    return "/";
+  }
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -31,7 +46,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/");
+    router.push(getSafeRedirect(redirectTo));
     router.refresh();
   }
 
@@ -42,7 +57,9 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${window.location.origin}/auth/callback?redirectTo=${encodeURIComponent(
+          getSafeRedirect(redirectTo),
+        )}`,
       },
     });
 
@@ -51,94 +68,100 @@ export default function LoginPage() {
       setError(error.message);
     }
   }
- 
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#faf8f4] px-6">
+    <main className="flex min-h-screen items-center justify-center bg-background px-6">
       <div className="w-full max-w-md">
         <div className="mb-10 text-center">
-          <h1 className="font-serif text-4xl text-[#292722]">
+          <h1 className="text-4xl font-semibold tracking-tight">
             Welcome back
           </h1>
 
-          <p className="mt-3 text-sm text-[#756f65]">
+          <p className="mt-3 text-sm text-muted-foreground">
             Sign in to your Lucky&apos;s Collection account
           </p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-5">
-          <div>
-            <label className="mb-2 block text-sm text-[#292722]">
-              Email
-            </label>
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
 
-            <input
+            <Input
+              id="email"
               type="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               required
-              className="w-full border border-[#d8d1c5] bg-white px-4 py-3 outline-none focus:border-[#b89b5e]"
               placeholder="you@example.com"
             />
           </div>
 
-          <div>
-            <label className="mb-2 block text-sm text-[#292722]">
-              Password
-            </label>
+          <div className="space-y-2">
+            <Label htmlFor="password">Password</Label>
 
-            <input
+            <Input
+              id="password"
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required
-              className="w-full border border-[#d8d1c5] bg-white px-4 py-3 outline-none focus:border-[#b89b5e]"
               placeholder="••••••••"
             />
           </div>
 
           {error && (
-            <p className="text-sm text-red-600">
+            <p className="text-sm text-destructive">
               {error}
             </p>
           )}
 
-          <button
+          <Button
             type="submit"
             disabled={loading}
-            className="w-full bg-[#292722] px-6 py-3 text-xs uppercase tracking-[0.2em] text-white transition hover:bg-[#b89b5e] disabled:opacity-50"
+            className="w-full"
           >
             {loading ? "Signing in..." : "Sign In"}
-          </button>
+          </Button>
         </form>
 
         <div className="my-7 flex items-center gap-4">
-          <div className="h-px flex-1 bg-[#ddd6ca]" />
-          <span className="text-xs uppercase tracking-widest text-[#aaa39a]">
+          <div className="h-px flex-1 bg-border" />
+
+          <span className="text-xs uppercase tracking-widest text-muted-foreground">
             or
           </span>
-          <div className="h-px flex-1 bg-[#ddd6ca]" />
+
+          <div className="h-px flex-1 bg-border" />
         </div>
 
-        <button
+        <Button
           type="button"
+          variant="outline"
           onClick={handleGoogleLogin}
           disabled={loading}
-          className="w-full border border-[#d8d1c5] bg-white px-6 py-3 text-xs uppercase tracking-[0.2em] text-[#292722] transition hover:border-[#292722] disabled:opacity-50"
+          className="w-full"
         >
           Continue with Google
-        </button>
+        </Button>
 
-        <p className="mt-8 text-center text-sm text-[#756f65]">
+        <p className="mt-8 text-center text-sm text-muted-foreground">
           Don&apos;t have an account?{" "}
-          <a
+          <Link
             href="/auth/signup"
-            className="text-[#b89b5e] hover:underline"
+            className="text-primary hover:underline"
           >
             Create one
-          </a>
+          </Link>
         </p>
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }

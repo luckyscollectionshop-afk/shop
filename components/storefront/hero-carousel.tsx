@@ -1,0 +1,23 @@
+"use client";
+
+import Image from "next/image";
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+
+export type HeroMedia = { url: string; type: "image" | "video" };
+
+export function HeroCarousel({ media }: { media: HeroMedia[] }) {
+  const [active, setActive] = useState(0);
+  const hasMultiple = media.length > 1;
+  useEffect(() => {
+    if (!hasMultiple) return;
+    const timer = window.setInterval(() => setActive((current) => (current + 1) % media.length), 6000);
+    return () => window.clearInterval(timer);
+  }, [hasMultiple, media.length]);
+
+  const item = media[active];
+  const previous = () => setActive((current) => (current - 1 + media.length) % media.length);
+  const next = () => setActive((current) => (current + 1) % media.length);
+
+  return <div className="relative aspect-[5/4] overflow-hidden rounded-xl bg-muted shadow-lg">{item.type === "video" ? <video key={item.url} src={item.url} controls className="h-full w-full object-cover" /> : <Image key={item.url} src={item.url} alt={`Lucky's Collection feature ${active + 1}`} width={1000} height={800} unoptimized className="h-full w-full object-cover" priority={active === 0} />}{hasMultiple && <><Button type="button" variant="secondary" size="icon" onClick={previous} aria-label="Previous hero media" className="absolute left-3 top-1/2 -translate-y-1/2">←</Button><Button type="button" variant="secondary" size="icon" onClick={next} aria-label="Next hero media" className="absolute right-3 top-1/2 -translate-y-1/2">→</Button><div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-2">{media.map((item, index) => <button key={`${item.url}-${index}`} type="button" onClick={() => setActive(index)} aria-label={`Show hero media ${index + 1}`} className={`h-2 w-2 rounded-full ${index === active ? "bg-primary" : "bg-background/80"}`} />)}</div></>}</div>;
+}

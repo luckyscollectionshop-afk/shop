@@ -1,11 +1,10 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import Link from "next/link";
 
 export default function SignupPage() {
-  const router = useRouter();
   const supabase = createClient();
 
   const [name, setName] = useState("");
@@ -139,12 +138,12 @@ export default function SignupPage() {
 
         <p className="mt-8 text-center text-sm text-[#756f65]">
           Already have an account?{" "}
-          <a
+          <Link
             href="/auth/login"
             className="text-[#b89b5e] hover:underline"
           >
             Sign in
-          </a>
+          </Link>
         </p>
       </div>
     </main>
