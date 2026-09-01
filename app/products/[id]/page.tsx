@@ -52,11 +52,7 @@ export async function generateMetadata({
 
   const image = images[0] ?? null;
 
-  const price =
-    product.sale_price != null
-      ? Number(product.sale_price)
-      : Number(product.price);
-
+ 
   return {
     title: `${product.name} | Lucky's Collection`,
     description:
