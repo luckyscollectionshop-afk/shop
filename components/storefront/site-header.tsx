@@ -46,7 +46,7 @@ export default function SiteHeader({
           href="/"
           className="text-lg font-semibold tracking-tight"
         >
-          Lucky&apos;s Collection
+          Lucky Charm Creations
         </Link>
 
         <nav className="flex items-center gap-2">
@@ -84,6 +84,16 @@ export default function SiteHeader({
                   ? ` (${displayCartCount})`
                   : ""}
               </Link>
+
+              <Link
+            href="/orders"
+            className={buttonVariants({
+              variant: "ghost",
+              size: "sm",
+            })}
+          >
+            Orders
+          </Link>
 
               {isAdmin && (
                 <Link

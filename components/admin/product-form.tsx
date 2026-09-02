@@ -68,7 +68,7 @@ export type Product = {
   video_urls: string[] | null;
   active: boolean | null;
   display_settings: ProductDisplaySettings | null;
-    available_for_sale: boolean;
+  available_for_sale: boolean;
 };
 export type Category = { id: string; name: string };
 type ImageItem = { preview: string; url?: string; file?: File };
@@ -97,8 +97,9 @@ export function ProductForm({
   const [depth, setDepth] = useState(asInputValue(product?.depth));
   const [weight, setWeight] = useState(asInputValue(product?.weight_grams));
   const [active, setActive] = useState(product?.active ?? true);
-const [availableForSale, setAvailableForSale] =
-  useState(product?.available_for_sale ?? true);
+  const [availableForSale, setAvailableForSale] = useState(
+    product?.available_for_sale ?? true,
+  );
   const [displaySettings, setDisplaySettings] =
     useState<ProductDisplaySettings>({
       ...defaultDisplaySettings,
@@ -125,13 +126,50 @@ const [availableForSale, setAvailableForSale] =
     setImages((current) => [...current, ...additions]);
     event.target.value = "";
   }
-  function removeImage(index: number) {
-    setImages((current) => {
-      const image = current[index];
-      if (image.file) URL.revokeObjectURL(image.preview);
-      return current.filter((_, itemIndex) => itemIndex !== index);
-    });
+ async function removeImage(index: number) {
+  const image = images[index];
+
+  // New image that hasn't been uploaded yet
+  if (!image.url) {
+    if (image.file) URL.revokeObjectURL(image.preview);
+
+    setImages((current) =>
+      current.filter((_, itemIndex) => itemIndex !== index),
+    );
+    return;
   }
+
+  // Existing Cloudinary image
+  if (!window.confirm("Delete this image permanently?")) return;
+
+  try {
+    const response = await fetch("/api/admin/cloudinary/delete", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        url: image.url,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Failed to delete image.");
+    }
+
+    setImages((current) =>
+      current.filter((_, itemIndex) => itemIndex !== index),
+    );
+  } catch (error) {
+    alert(
+      error instanceof Error
+        ? error.message
+        : "Failed to delete image.",
+    );
+  }
+}
   async function uploadImages() {
     if (!images.some((image) => !image.url && image.file)) return;
     setUploading(true);
@@ -265,6 +303,7 @@ const [availableForSale, setAvailableForSale] =
       setSaving(false);
     }
   }
+
   async function deleteProduct() {
     if (
       !product ||
@@ -586,27 +625,25 @@ const [availableForSale, setAvailableForSale] =
           </CardContent>
         </Card>
         <Card>
-  <CardContent className="flex items-center justify-between py-4">
-    <div>
-      <Label htmlFor="available-for-sale">
-        Available for sale
-      </Label>
+          <CardContent className="flex items-center justify-between py-4">
+            <div>
+              <Label htmlFor="available-for-sale">Available for sale</Label>
 
-      <p className="text-sm text-muted-foreground">
-        Customers can add this product to their cart even when
-        stock is 0. Useful for prebooking products.
-      </p>
-    </div>
+              <p className="text-sm text-muted-foreground">
+                Customers can add this product to their cart even when stock is
+                0. Useful for prebooking products.
+              </p>
+            </div>
 
-    <Checkbox
-      id="available-for-sale"
-      checked={availableForSale}
-      onCheckedChange={(checked) =>
-        setAvailableForSale(checked === true)
-      }
-    />
-  </CardContent>
-</Card>
+            <Checkbox
+              id="available-for-sale"
+              checked={availableForSale}
+              onCheckedChange={(checked) =>
+                setAvailableForSale(checked === true)
+              }
+            />
+          </CardContent>
+        </Card>
         <Separator />
         <div className="flex items-center justify-between gap-3 pb-6">
           {editing ? (

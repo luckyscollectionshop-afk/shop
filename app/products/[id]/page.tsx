@@ -150,7 +150,11 @@ export default async function ProductPage({
   const salePrice =
     product.sale_price == null ? null : Number(product.sale_price);
   return (
-    <main className="min-h-screen bg-background">
+    <main
+  className="min-h-screen bg-background"
+  data-product-id={product.id}
+  data-product-name={product.name}
+>
       <SiteHeader isLoggedIn={!!user} isAdmin={isAdmin} cartCount={cartCount} />
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
         <Link

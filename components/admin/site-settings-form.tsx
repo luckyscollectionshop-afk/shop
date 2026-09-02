@@ -231,6 +231,59 @@ export function SiteSettingsForm({
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
 
+    /*
+   * ---------------------------------------------------------
+   * REMOVE HERO MEDIA
+   * ---------------------------------------------------------
+   */
+
+  async function removeHeroMedia(index: number) {
+    const item = media[index];
+
+    if (!item) return;
+
+    const confirmed = window.confirm(
+      "Are you sure you want to remove this hero image?",
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch(
+        "/api/admin/cloudinary/delete",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            url: item.url,
+          }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || "Failed to remove hero image.",
+        );
+      }
+
+      setMedia((current) =>
+        current.filter((_, itemIndex) => itemIndex !== index),
+      );
+    } catch (error) {
+      console.error("Hero image removal error:", error);
+
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Failed to remove hero image.",
+      );
+    }
+  }
+
   /*
    * ---------------------------------------------------------
    * HERO MEDIA UPLOAD
@@ -612,18 +665,11 @@ export function SiteSettingsForm({
                       />
                     )}
 
-                    <Button
+                                       <Button
                       type="button"
                       variant="destructive"
                       size="sm"
-                      onClick={() =>
-                        setMedia((current) =>
-                          current.filter(
-                            (_, itemIndex) =>
-                              itemIndex !== index,
-                          ),
-                        )
-                      }
+                      onClick={() => removeHeroMedia(index)}
                       className="absolute right-2 top-2"
                     >
                       Remove

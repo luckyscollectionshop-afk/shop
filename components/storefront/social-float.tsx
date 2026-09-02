@@ -110,16 +110,37 @@ export function SocialFloat({ settings }: SocialFloatProps) {
     <>
       {/* Floating social button */}
       <div className="fixed right-4 top-1/2 z-40 -translate-y-1/2">
-        <Button
-          type="button"
-          variant="secondary"
-          size="icon"
-          onClick={() => setOpen(true)}
-          aria-label="Open social media"
-          className="h-12 w-12 rounded-full border shadow-lg"
-        >
-          <span className="text-lg">✦</span>
-        </Button>
+        <div className="group relative animate-[float_3s_ease-in-out_infinite]">
+          {/* Rainbow rotating glow */}
+          <div
+            className="absolute -inset-1 rounded-full bg-[conic-gradient(from_0deg,#ff0080,#ff8a00,#ffe600,#00e676,#00c8ff,#7c4dff,#ff0080)] opacity-80 blur-md animate-spin"
+            style={{ animationDuration: "4s" }}
+          />
+
+          {/* Rainbow rotating ring */}
+          <div
+            className="relative rounded-full bg-[conic-gradient(from_0deg,#ff0080,#ff8a00,#ffe600,#00e676,#00c8ff,#7c4dff,#ff0080)] p-[3px] shadow-[0_0_18px_rgba(255,255,255,0.55)] transition-transform duration-300 group-hover:scale-110 group-hover:shadow-[0_0_28px_rgba(255,255,255,0.8)] animate-spin"
+            style={{ animationDuration: "5s" }}
+          >
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              onClick={() => setOpen(true)}
+              aria-label="Open social media"
+              className="relative h-12 w-12 rounded-full border-0 bg-background text-foreground shadow-xl hover:bg-background"
+            >
+              <span className="relative text-xl font-bold">
+                ✦
+              </span>
+
+              {/* Shimmer */}
+              <span className="pointer-events-none absolute inset-1 overflow-hidden rounded-full">
+                <span className="absolute -left-8 top-0 h-full w-4 rotate-12 bg-white/60 blur-sm animate-[shine_2.5s_ease-in-out_infinite]" />
+              </span>
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Social panel overlay */}
@@ -306,6 +327,40 @@ export function SocialFloat({ settings }: SocialFloatProps) {
           </div>
         </div>
       )}
+
+      {/* Animation definitions */}
+      <style jsx global>{`
+        @keyframes float {
+          0%,
+          100% {
+            transform: translateY(0);
+          }
+
+          50% {
+            transform: translateY(-7px);
+          }
+        }
+
+        @keyframes shine {
+          0% {
+            left: -30px;
+            opacity: 0;
+          }
+
+          20% {
+            opacity: 1;
+          }
+
+          55% {
+            opacity: 1;
+          }
+
+          100% {
+            left: 120px;
+            opacity: 0;
+          }
+        }
+      `}</style>
     </>
   );
 }
