@@ -160,7 +160,7 @@ export function SocialFloat({ settings }: SocialFloatProps) {
                 </p>
 
                 <h2 className="mt-1 text-2xl font-semibold">
-                  Lucky&apos;s Collection
+                  Lucky Charm Creation
                 </h2>
               </div>
 
@@ -216,7 +216,7 @@ export function SocialFloat({ settings }: SocialFloatProps) {
             </div>
 
             <div className="mt-auto pt-8 text-center text-xs text-muted-foreground">
-              Follow Lucky&apos;s Collection for new arrivals, offers and
+              Follow Lucky Charm Creation for new arrivals, offers and
               updates.
             </div>
           </div>

@@ -54,7 +54,7 @@ export default function ProductShare({
     try {
       await navigator.share({
         title: productName,
-        text: `Check out ${productName} at Lucky's Collection 🛍️\n\n`,
+        text: `Check out ${productName} at Lucky Charm Creation 🛍️\n\n`,
         url,
       });
 
@@ -71,7 +71,7 @@ export default function ProductShare({
   async function shareWhatsApp() {
     const url = getProductUrl();
 
-    const text = `Check out ${productName} at Lucky's Collection: ${url}`;
+    const text = `Check out ${productName} at Lucky Charm Creation: ${url}`;
 
     window.open(
       `https://wa.me/?text=${encodeURIComponent(text)}`,
@@ -113,7 +113,7 @@ export default function ProductShare({
 
     const subject = `Check out ${productName}`;
 
-    const body = `I thought you might like this product from Lucky's Collection:\n\n${url}`;
+    const body = `I thought you might like this product from Lucky Charm Creation:\n\n${url}`;
 
     window.location.href = `mailto:?subject=${encodeURIComponent(
       subject,

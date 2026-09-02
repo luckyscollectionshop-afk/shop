@@ -70,28 +70,28 @@ export default async function ProductsPage({
   );
   return (
     <main className="min-h-screen bg-background">
-      {" "}
+      
       <SiteHeader
         isLoggedIn={!!user}
         isAdmin={isAdmin}
         cartCount={cartCount}
-      />{" "}
+      />
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        {" "}
+        
         <h1 className="text-3xl font-semibold tracking-tight">
-          {" "}
-          Products{" "}
-        </h1>{" "}
+          
+          Products
+        </h1>
         <p className="mt-2 text-muted-foreground">
-          {" "}
-          Browse our collection.{" "}
-        </p>{" "}
+          
+          Browse our collection &rarr;
+        </p>
         <ProductBrowser
           products={formattedProducts}
           categories={categories ?? []}
           initialCategory={selectedCategory?.id}
-        />{" "}
-      </div>{" "}
+        />
+      </div>
     </main>
   );
 }

@@ -335,7 +335,7 @@ for (const products of productsByCategory.values()) {
               href="/products"
               className={`${buttonVariants({ size: "lg" })} mt-8`}
             >
-              Explore collection
+              Explore our amazing collection &rarr;
             </Link>
           </div>
 
@@ -345,7 +345,7 @@ for (const products of productsByCategory.values()) {
             <Card className="justify-center border-primary/20 bg-primary text-primary-foreground">
               <CardContent className="p-8 text-center">
                 <p className="text-sm font-medium tracking-[0.2em]">
-                  LUCKY&apos;S COLLECTION
+                  LUCKY Charm Creation
                 </p>
 
                 <p className="mt-3 text-2xl font-semibold">
@@ -415,7 +415,7 @@ for (const products of productsByCategory.values()) {
       </section>
 
       <footer className="border-t py-8 text-center text-sm text-muted-foreground">
-        © {new Date().getFullYear()} Lucky&apos;s Collection
+        © {new Date().getFullYear()} Lucky Charm Creation
       </footer>
     </main>
   );

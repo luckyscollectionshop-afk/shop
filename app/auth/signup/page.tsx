@@ -64,7 +64,7 @@ export default function SignupPage() {
           </h1>
 
           <p className="mt-3 text-sm text-[#756f65]">
-            Join Lucky&apos;s Collection
+            Join Lucky Charm Creation
           </p>
         </div>
 
