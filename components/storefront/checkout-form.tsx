@@ -21,56 +21,91 @@ export default function CheckoutForm({
 
     if (submitting) return;
 
-    const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const formData = new FormData(form);
 
-    const data = {
-      full_name: String(formData.get("full_name") ?? ""),
-      phone: String(formData.get("phone") ?? ""),
-      address: String(formData.get("address") ?? ""),
-      city: String(formData.get("city") ?? ""),
-      postal_code: String(
-        formData.get("postal_code") ?? "",
-      ),
-      country: String(formData.get("country") ?? ""),
-      payment_method: String(
-        formData.get("payment_method") ?? "",
-      ),
-    };
+    const fullName = String(
+      formData.get("full_name") ?? "",
+    ).trim();
 
-    if (!data.full_name.trim()) {
+    const phone = String(
+      formData.get("phone") ?? "",
+    ).trim();
+
+    const address = String(
+      formData.get("address") ?? "",
+    ).trim();
+
+    const city = String(
+      formData.get("city") ?? "",
+    ).trim();
+
+    const postalCode = String(
+      formData.get("postal_code") ?? "",
+    ).trim();
+
+    const country = String(
+      formData.get("country") ?? "",
+    ).trim();
+
+    const paymentMethod = String(
+      formData.get("payment_method") ?? "",
+    ).trim();
+
+    /* =====================================================
+       Validate shipping address
+       ===================================================== */
+
+    if (!fullName) {
       alert("Please enter your full name.");
       return;
     }
 
-    if (!data.phone.trim()) {
+    if (!phone) {
       alert("Please enter your phone number.");
       return;
     }
 
-    if (!data.address.trim()) {
+    if (!address) {
       alert("Please enter your address.");
       return;
     }
 
-    if (!data.city.trim()) {
+    if (!city) {
       alert("Please enter your city.");
       return;
     }
 
-    if (!data.postal_code.trim()) {
+    if (!postalCode) {
       alert("Please enter your postal code.");
       return;
     }
 
-    if (!data.country.trim()) {
+    if (!country) {
       alert("Please enter your country.");
       return;
     }
 
-    if (!data.payment_method) {
+    /* =====================================================
+       Validate payment
+       ===================================================== */
+
+    if (!paymentMethod) {
       alert("Please select a payment method.");
       return;
     }
+
+    const data = {
+      full_name: fullName,
+      phone,
+      address,
+      city,
+      postal_code: postalCode,
+      country,
+      payment_method: paymentMethod,
+    };
+
+    console.log("Submitting checkout data:", data);
 
     setSubmitting(true);
 
@@ -118,7 +153,9 @@ export default function CheckoutForm({
         disabled={submitting}
         className="mt-6 w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {submitting ? "Placing order..." : "Place order"}
+        {submitting
+          ? "Placing order..."
+          : "Place order"}
       </button>
     </form>
   );

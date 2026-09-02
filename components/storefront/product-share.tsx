@@ -2,34 +2,60 @@
 
 import { useState } from "react";
 import {
-  Share2,
-  MessageCircle,
-  Mail,
+  Check,
   Link as LinkIcon,
+  Mail,
+  MessageCircle,
+  Share2,
   X,
-  MoreHorizontal,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 type ProductShareProps = {
+  productId: string;
   productName: string;
+  imageUrl?: string;
+  videoUrl?: string;
 };
 
 export default function ProductShare({
+  productId,
   productName,
+  imageUrl,
+  videoUrl,
 }: ProductShareProps) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [sharing, setSharing] = useState(false);
 
-  function getProductUrl() {
-    return window.location.href;
-  }
+  /*
+   * IMPORTANT:
+   *
+   * We intentionally do NOT use NEXT_PUBLIC_SITE_URL.
+   *
+   * window.location.origin automatically gives:
+   *
+   * localhost:
+   * http://localhost:3000
+   *
+   * Production:
+   * https://your-production-site.vercel.app
+   *
+   * Therefore every shared product link points to the
+   * website the customer is actually using.
+   */
+  const siteUrl = window.location.origin;
+
+  const productUrl = `${siteUrl}/products/${productId}`;
+
+  const isVideo = Boolean(videoUrl);
+
+  const shareText = isVideo
+    ? `Check out this video of ${productName} at Lucky Charm Creation 🛍️`
+    : `Check out ${productName} at Lucky Charm Creation 🛍️`;
 
   async function copyLink() {
-    const url = getProductUrl();
-
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(productUrl);
 
       setCopied(true);
 
@@ -37,110 +63,198 @@ export default function ProductShare({
         setCopied(false);
       }, 2000);
     } catch {
-      alert("Could not copy the link.");
+      alert("Could not copy the product link.");
     }
   }
 
   async function nativeShare() {
-    const url = getProductUrl();
-
-    if (!navigator.share) {
-      alert(
-        "Your browser does not support the native share menu. Please choose one of the sharing options below.",
-      );
-      return;
-    }
+    setSharing(true);
 
     try {
-      await navigator.share({
-        title: productName,
-        text: `Check out ${productName} at Lucky Charm Creation 🛍️\n\n`,
-        url,
-      });
+      /*
+       * IMAGE SHARING
+       *
+       * Try to share the actual image file.
+       *
+       * The product URL is also included so that the
+       * customer can come back to the product page.
+       */
+      if (imageUrl && navigator.share) {
+        try {
+          const response = await fetch(imageUrl);
 
-      setOpen(false);
-    } catch (error) {
-      // User cancelled the native share menu.
-      // We do not need to show an error in that case.
-      if (error instanceof Error && error.name !== "AbortError") {
-        console.error("Native share failed:", error);
+          if (response.ok) {
+            const blob = await response.blob();
+
+            const extension =
+              blob.type === "image/png"
+                ? "png"
+                : blob.type === "image/webp"
+                  ? "webp"
+                  : "jpg";
+
+            const safeName = productName
+              .replace(/[^a-z0-9]/gi, "-")
+              .replace(/-+/g, "-")
+              .replace(/^-|-$/g, "");
+
+            const file = new File(
+              [blob],
+              `${safeName || "product"}.${extension}`,
+              {
+                type: blob.type || "image/jpeg",
+              },
+            );
+
+            if (
+              navigator.canShare &&
+              navigator.canShare({
+                files: [file],
+              })
+            ) {
+              await navigator.share({
+                title: productName,
+                text: `${shareText}\n\n${productUrl}`,
+                files: [file],
+              });
+
+              setOpen(false);
+              return;
+            }
+          }
+        } catch (error) {
+          /*
+           * If the image file cannot be shared,
+           * continue to normal link sharing.
+           */
+          console.log(
+            "[share] Could not share image file, falling back:",
+            error,
+          );
+        }
       }
+
+      /*
+       * VIDEO / NORMAL SHARE
+       *
+       * For videos we share:
+       *
+       * 1. YouTube video URL
+       * 2. Product page URL
+       */
+      if (navigator.share) {
+        const text = videoUrl
+          ? `${shareText}\n\nWatch the video:\n${videoUrl}\n\nView the product:\n${productUrl}`
+          : `${shareText}\n\n${productUrl}`;
+
+        await navigator.share({
+          title: productName,
+          text,
+          url: productUrl,
+        });
+
+        setOpen(false);
+        return;
+      }
+
+      /*
+       * Browser does not support native sharing.
+       */
+      await copyLink();
+
+      alert(
+        "The product link has been copied. You can now paste it into WhatsApp, Instagram, Facebook, Messages, or another app.",
+      );
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.name === "AbortError"
+      ) {
+        return;
+      }
+
+      console.error("[share] Share failed:", error);
+
+      try {
+        await copyLink();
+
+        alert(
+          "The product link has been copied. You can now paste it into your preferred app.",
+        );
+      } catch {
+        alert("Unable to share this product.");
+      }
+    } finally {
+      setSharing(false);
     }
   }
 
   async function shareWhatsApp() {
-    const url = getProductUrl();
-
-    const text = `Check out ${productName} at Lucky Charm Creation: ${url}`;
+    const text = videoUrl
+      ? `${shareText}\n\nWatch the video:\n${videoUrl}\n\nView the product:\n${productUrl}`
+      : `${shareText}\n\nView the product:\n${productUrl}`;
 
     window.open(
       `https://wa.me/?text=${encodeURIComponent(text)}`,
       "_blank",
       "noopener,noreferrer",
     );
-  }
 
-  async function shareFacebook() {
-    const url = getProductUrl();
-
-    window.open(
-      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
-        url,
-      )}`,
-      "_blank",
-      "noopener,noreferrer",
-    );
-  }
-
-  async function shareInstagram() {
-    await copyLink();
-
-    alert(
-      "The product link has been copied. You can now paste it into Instagram.",
-    );
-  }
-
-  async function shareYouTube() {
-    await copyLink();
-
-    alert(
-      "The product link has been copied. You can now paste it into your YouTube post or description.",
-    );
+    setOpen(false);
   }
 
   async function shareEmail() {
-    const url = getProductUrl();
-
     const subject = `Check out ${productName}`;
 
-    const body = `I thought you might like this product from Lucky Charm Creation:\n\n${url}`;
+    const body = videoUrl
+      ? `${shareText}\n\nWatch the video:\n${videoUrl}\n\nView the product:\n${productUrl}`
+      : `${shareText}\n\nView the product:\n${productUrl}`;
 
-    window.location.href = `mailto:?subject=${encodeURIComponent(
-      subject,
-    )}&body=${encodeURIComponent(body)}`;
+    window.location.href =
+      `mailto:?subject=${encodeURIComponent(subject)}` +
+      `&body=${encodeURIComponent(body)}`;
+
+    setOpen(false);
   }
 
   return (
     <>
-      {/* Main Share button */}
-      <Button
+      {/* Small share button */}
+      <button
         type="button"
-        variant="outline"
         onClick={() => setOpen(true)}
-        className="mt-4"
+        disabled={sharing}
+        className="flex h-9 items-center gap-2 rounded-full bg-background/95 px-3 text-sm font-medium text-foreground shadow-md backdrop-blur transition hover:bg-background disabled:opacity-60"
+        aria-label={
+          isVideo
+            ? "Share this video"
+            : "Share this image"
+        }
+        title={
+          isVideo
+            ? "Share this video"
+            : "Share this image"
+        }
       >
-        <Share2 className="mr-2 h-4 w-4" />
-        Share
-      </Button>
+        <Share2 className="h-4 w-4" />
+
+        <span className="hidden sm:inline">
+          {sharing
+            ? "Sharing..."
+            : isVideo
+              ? "Share video"
+              : "Share"}
+        </span>
+      </button>
 
       {/* Share dialog */}
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4"
           onClick={() => setOpen(false)}
         >
           <div
-            className="relative w-full max-w-sm rounded-2xl bg-background p-6 shadow-xl"
+            className="relative w-full max-w-sm rounded-2xl bg-background p-6 shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
             {/* Close */}
@@ -156,103 +270,73 @@ export default function ProductShare({
             {/* Heading */}
             <div className="pr-8">
               <h2 className="text-xl font-semibold">
-                Share this product
+                {isVideo
+                  ? "Share this video"
+                  : "Share this image"}
               </h2>
 
               <p className="mt-1 text-sm text-muted-foreground">
-                Share {productName} with your friends.
+                {productName}
               </p>
             </div>
 
             {/* Native share */}
-            <Button
+            <button
               type="button"
               onClick={nativeShare}
-              className="mt-6 h-12 w-full justify-start"
+              disabled={sharing}
+              className="mt-6 flex h-12 w-full items-center rounded-lg bg-primary px-4 text-left text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
             >
-              <MoreHorizontal className="mr-3 h-5 w-5" />
-              More sharing options
-            </Button>
+              <Share2 className="mr-3 h-5 w-5" />
 
-            <p className="mt-2 text-xs text-muted-foreground">
-              On supported phones and browsers, this opens your devices
-              sharing menu with apps such as Instagram, WhatsApp and Messages.
-            </p>
+              {sharing
+                ? "Sharing..."
+                : "More sharing options"}
+            </button>
 
-            {/* Individual sharing options */}
-            <div className="mt-5 grid grid-cols-2 gap-3">
+            {/* Direct options */}
+            <div className="mt-4 grid grid-cols-2 gap-3">
               {/* WhatsApp */}
-              <Button
+              <button
                 type="button"
-                variant="outline"
                 onClick={shareWhatsApp}
-                className="h-12 justify-start"
+                className="flex h-11 items-center rounded-lg border px-3 text-sm font-medium hover:bg-muted"
               >
-                <MessageCircle className="mr-3 h-5 w-5" />
+                <MessageCircle className="mr-2 h-5 w-5" />
                 WhatsApp
-              </Button>
-
-              {/* Facebook */}
-              <Button
-                type="button"
-                variant="outline"
-                onClick={shareFacebook}
-                className="h-12 justify-start"
-              >
-                <span className="mr-3 flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
-                  f
-                </span>
-                Facebook
-              </Button>
-
-              {/* Instagram */}
-              <Button
-                type="button"
-                variant="outline"
-                onClick={shareInstagram}
-                className="h-12 justify-start"
-              >
-                <span className="mr-3 flex h-5 w-5 items-center justify-center rounded-md border text-xs font-bold">
-                  ◎
-                </span>
-                Instagram
-              </Button>
-
-              {/* YouTube */}
-              <Button
-                type="button"
-                variant="outline"
-                onClick={shareYouTube}
-                className="h-12 justify-start"
-              >
-                <span className="mr-3 flex h-5 w-5 items-center justify-center rounded bg-red-600 text-[10px] font-bold text-white">
-                  ▶
-                </span>
-                YouTube
-              </Button>
+              </button>
 
               {/* Email */}
-              <Button
+              <button
                 type="button"
-                variant="outline"
                 onClick={shareEmail}
-                className="h-12 justify-start"
+                className="flex h-11 items-center rounded-lg border px-3 text-sm font-medium hover:bg-muted"
               >
-                <Mail className="mr-3 h-5 w-5" />
+                <Mail className="mr-2 h-5 w-5" />
                 Email
-              </Button>
+              </button>
 
-              {/* Copy link */}
-              <Button
+              {/* Copy product URL */}
+              <button
                 type="button"
-                variant="outline"
                 onClick={copyLink}
-                className="h-12 justify-start"
+                className="col-span-2 flex h-11 items-center rounded-lg border px-3 text-sm font-medium hover:bg-muted"
               >
-                <LinkIcon className="mr-3 h-5 w-5" />
-                {copied ? "Copied!" : "Copy link"}
-              </Button>
+                {copied ? (
+                  <Check className="mr-2 h-5 w-5" />
+                ) : (
+                  <LinkIcon className="mr-2 h-5 w-5" />
+                )}
+
+                {copied
+                  ? "Product link copied!"
+                  : "Copy product link"}
+              </button>
             </div>
+
+            <p className="mt-4 text-center text-xs text-muted-foreground">
+              The shared link always points to this product page.
+            </p>
           </div>
         </div>
       )}

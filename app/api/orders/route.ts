@@ -1,9 +1,17 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
+/* =========================================================
+   POST — Create order
+   ========================================================= */
+
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
+
+    /* =====================================================
+       Require logged-in user
+       ===================================================== */
 
     const {
       data: { user },
@@ -11,10 +19,16 @@ export async function POST(request: Request) {
 
     if (!user) {
       return NextResponse.json(
-        { error: "You must be logged in to place an order." },
+        {
+          error: "You must be logged in to place an order.",
+        },
         { status: 401 },
       );
     }
+
+    /* =====================================================
+       Read request body
+       ===================================================== */
 
     const body = await request.json();
 
@@ -28,6 +42,14 @@ export async function POST(request: Request) {
       payment_method,
     } = body;
 
+    /* =====================================================
+       Shipping validation
+       
+       IMPORTANT:
+       This validation happens ONLY when placing the order.
+       It is NOT used when adding products to the cart.
+       ===================================================== */
+
     if (
       !full_name?.trim() ||
       !phone?.trim() ||
@@ -37,23 +59,40 @@ export async function POST(request: Request) {
       !country?.trim()
     ) {
       return NextResponse.json(
-        { error: "Please complete your shipping address." },
+        {
+          error: "Please complete your shipping address.",
+        },
         { status: 400 },
       );
     }
 
-    if (!["twint", "bank_transfer"].includes(payment_method)) {
+    /* =====================================================
+       Payment method validation
+       ===================================================== */
+
+    if (
+      !["twint", "bank_transfer"].includes(
+        payment_method,
+      )
+    ) {
       return NextResponse.json(
-        { error: "Please select a valid payment method." },
+        {
+          error: "Please select a valid payment method.",
+        },
         { status: 400 },
       );
     }
 
-    const { data: cart, error: cartError } = await supabase
-      .from("carts")
-      .select("id")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    /* =====================================================
+       Find user's cart
+       ===================================================== */
+
+    const { data: cart, error: cartError } =
+      await supabase
+        .from("carts")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
 
     if (cartError) {
       throw cartError;
@@ -61,12 +100,21 @@ export async function POST(request: Request) {
 
     if (!cart) {
       return NextResponse.json(
-        { error: "Your cart is empty." },
+        {
+          error: "Your cart is empty.",
+        },
         { status: 400 },
       );
     }
 
-    const { data: cartItems, error: itemsError } = await supabase
+    /* =====================================================
+       Get cart items + products
+       ===================================================== */
+
+    const {
+      data: cartItems,
+      error: itemsError,
+    } = await supabase
       .from("cart_items")
       .select(
         `
@@ -79,6 +127,7 @@ export async function POST(request: Request) {
             sale_price,
             stock,
             active,
+            available_for_sale,
             weight_grams,
             size,
             height,
@@ -94,6 +143,10 @@ export async function POST(request: Request) {
       throw itemsError;
     }
 
+    /* =====================================================
+       Normalize product relationship
+       ===================================================== */
+
     const items = (cartItems ?? []).map((item) => ({
       ...item,
       product: Array.isArray(item.product)
@@ -103,65 +156,174 @@ export async function POST(request: Request) {
 
     if (items.length === 0) {
       return NextResponse.json(
-        { error: "Your cart is empty." },
+        {
+          error: "Your cart is empty.",
+        },
         { status: 400 },
       );
     }
 
+    /* =====================================================
+       Validate every cart item
+       ===================================================== */
+
     for (const item of items) {
       if (!item.product) {
         return NextResponse.json(
-          { error: "One of the products in your cart is no longer available." },
-          { status: 400 },
-        );
-      }
-
-      if (!item.product.active) {
-        return NextResponse.json(
           {
-            error: `${item.product.name} is no longer available.`,
+            error:
+              "One of the products in your cart is no longer available.",
           },
           { status: 400 },
         );
       }
 
-      if (item.quantity > item.product.stock) {
+      const product = item.product;
+
+      /* ---------------------------------------------------
+         Product must still be active
+         --------------------------------------------------- */
+
+      if (!product.active) {
         return NextResponse.json(
           {
-            error: `Not enough stock available for ${item.product.name}.`,
+            error:
+              `${product.name} is no longer available.`,
+          },
+          { status: 400 },
+        );
+      }
+
+      const stock = product.stock ?? 0;
+
+      const availableForSale =
+        product.available_for_sale ?? false;
+
+      /* ---------------------------------------------------
+         Determine product state
+         
+         NORMAL SALE:
+         available_for_sale = true
+         stock > 0
+
+         PRE-BOOKING:
+         available_for_sale = false
+         stock = 0
+
+         UNAVAILABLE:
+         available_for_sale = true
+         stock = 0
+
+         OR:
+         available_for_sale = false
+         stock > 0
+         --------------------------------------------------- */
+
+      const isPreBooking =
+        !availableForSale && stock <= 0;
+
+      const isNormalSale =
+        availableForSale && stock > 0;
+
+      const canOrder =
+        isNormalSale || isPreBooking;
+
+      /* ---------------------------------------------------
+         Product cannot currently be ordered
+         --------------------------------------------------- */
+
+      if (!canOrder) {
+        return NextResponse.json(
+          {
+            error:
+              `${product.name} is currently unavailable.`,
+          },
+          { status: 400 },
+        );
+      }
+
+      /* ---------------------------------------------------
+         Normal products must respect stock.
+         
+         PRE-BOOKING PRODUCTS:
+         stock = 0 intentionally,
+         therefore stock does NOT limit quantity.
+         --------------------------------------------------- */
+
+      if (
+        !isPreBooking &&
+        item.quantity > stock
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              `Not enough stock available for ${product.name}.`,
           },
           { status: 400 },
         );
       }
     }
 
-    const subtotal = items.reduce((total, item) => {
-      if (!item.product) return total;
+    /* =====================================================
+       Calculate subtotal
+       ===================================================== */
 
-      const price =
-        item.product.sale_price ?? item.product.price;
+    const subtotal = items.reduce(
+      (total, item) => {
+        if (!item.product) {
+          return total;
+        }
 
-      return total + Number(price) * item.quantity;
-    }, 0);
+        const price =
+          item.product.sale_price ??
+          item.product.price;
 
-    const { data: storefrontSettings, error: settingsError } =
-      await supabase
-        .from("storefront_settings")
-        .select(
-          "shipping_enabled, shipping_method, shipping_price, free_shipping, twint_enabled, bank_transfer_enabled",
-        )
-        .maybeSingle();
+        return (
+          total +
+          Number(price) * item.quantity
+        );
+      },
+      0,
+    );
+
+    /* =====================================================
+       Get storefront settings
+       ===================================================== */
+
+    const {
+      data: storefrontSettings,
+      error: settingsError,
+    } = await supabase
+      .from("storefront_settings")
+      .select(
+        `
+          shipping_enabled,
+          shipping_method,
+          shipping_price,
+          free_shipping,
+          twint_enabled,
+          bank_transfer_enabled
+        `,
+      )
+      .maybeSingle();
 
     if (settingsError) {
       throw settingsError;
     }
+
+    /* =====================================================
+       Validate payment method availability
+       ===================================================== */
 
     if (
       payment_method === "twint" &&
       !storefrontSettings?.twint_enabled
     ) {
       return NextResponse.json(
-        { error: "TWINT is currently unavailable." },
+        {
+          error:
+            "TWINT is currently unavailable.",
+        },
         { status: 400 },
       );
     }
@@ -171,67 +333,137 @@ export async function POST(request: Request) {
       !storefrontSettings?.bank_transfer_enabled
     ) {
       return NextResponse.json(
-        { error: "Bank transfer is currently unavailable." },
+        {
+          error:
+            "Bank transfer is currently unavailable.",
+        },
         { status: 400 },
       );
     }
+
+    /* =====================================================
+       Calculate shipping
+       ===================================================== */
 
     const shippingCost =
       storefrontSettings?.shipping_enabled
         ? storefrontSettings.free_shipping
           ? 0
-          : Number(storefrontSettings.shipping_price ?? 0)
+          : Number(
+              storefrontSettings.shipping_price ?? 0,
+            )
         : 0;
 
-    const total = subtotal + shippingCost;
+    /* =====================================================
+       Calculate final total
+       ===================================================== */
 
-    const { data: order, error: orderError } = await supabase
+    const total =
+      subtotal + shippingCost;
+
+    /* =====================================================
+       Create order
+       ===================================================== */
+
+    const {
+      data: order,
+      error: orderError,
+    } = await supabase
       .from("orders")
       .insert({
         user_id: user.id,
+
         status: "pending_payment",
+
         payment_method,
+
         payment_status: "pending",
+
         subtotal,
+
         shipping_cost: shippingCost,
+
         total,
-        shipping_name: full_name.trim(),
-        shipping_phone: phone.trim(),
-        shipping_address: address.trim(),
-        shipping_city: city.trim(),
-        shipping_postal_code: postal_code.trim(),
-        shipping_country: country.trim(),
+
+        shipping_name:
+          full_name.trim(),
+
+        shipping_phone:
+          phone.trim(),
+
+        shipping_address:
+          address.trim(),
+
+        shipping_city:
+          city.trim(),
+
+        shipping_postal_code:
+          postal_code.trim(),
+
+        shipping_country:
+          country.trim(),
       })
-      .select("id, order_number")
+      .select(
+        "id, order_number",
+      )
       .single();
 
     if (orderError) {
       throw orderError;
     }
 
-    const orderItems = items.map((item) => {
-      const product = item.product!;
+    /* =====================================================
+       Create order items
+       ===================================================== */
 
-      const unitPrice =
-        product.sale_price ?? product.price;
+    const orderItems = items.map(
+      (item) => {
+        const product =
+          item.product!;
 
-      return {
-        order_id: order.id,
-        product_id: product.id,
-        product_name: product.name,
-        quantity: item.quantity,
-        unit_price: Number(unitPrice),
-        total_price:
-          Number(unitPrice) * item.quantity,
-        weight_grams: product.weight_grams,
-        size: product.size,
-        height: product.height,
-        width: product.width,
-        depth: product.depth,
-      };
-    });
+        const unitPrice =
+          product.sale_price ??
+          product.price;
 
-    const { error: orderItemsError } = await supabase
+        return {
+          order_id: order.id,
+
+          product_id: product.id,
+
+          product_name:
+            product.name,
+
+          quantity:
+            item.quantity,
+
+          unit_price:
+            Number(unitPrice),
+
+          total_price:
+            Number(unitPrice) *
+            item.quantity,
+
+          weight_grams:
+            product.weight_grams,
+
+          size:
+            product.size,
+
+          height:
+            product.height,
+
+          width:
+            product.width,
+
+          depth:
+            product.depth,
+        };
+      },
+    );
+
+    const {
+      error: orderItemsError,
+    } = await supabase
       .from("order_items")
       .insert(orderItems);
 
@@ -239,16 +471,35 @@ export async function POST(request: Request) {
       throw orderItemsError;
     }
 
-    const { error: profileError } = await supabase
+    /* =====================================================
+       Update user's profile with shipping information
+       ===================================================== */
+
+    const {
+      error: profileError,
+    } = await supabase
       .from("profiles")
       .update({
-        full_name: full_name.trim(),
-        phone: phone.trim(),
-        address: address.trim(),
-        city: city.trim(),
-        postal_code: postal_code.trim(),
-        country: country.trim(),
-        updated_at: new Date().toISOString(),
+        full_name:
+          full_name.trim(),
+
+        phone:
+          phone.trim(),
+
+        address:
+          address.trim(),
+
+        city:
+          city.trim(),
+
+        postal_code:
+          postal_code.trim(),
+
+        country:
+          country.trim(),
+
+        updated_at:
+          new Date().toISOString(),
       })
       .eq("id", user.id);
 
@@ -256,22 +507,39 @@ export async function POST(request: Request) {
       throw profileError;
     }
 
-    const { error: clearCartError } = await supabase
-  .from("cart_items")
-  .delete()
-  .eq("cart_id", cart.id);
+    /* =====================================================
+       Clear cart after successful order creation
+       ===================================================== */
 
-if (clearCartError) {
-  throw clearCartError;
-}
+    const {
+      error: clearCartError,
+    } = await supabase
+      .from("cart_items")
+      .delete()
+      .eq("cart_id", cart.id);
+
+    if (clearCartError) {
+      throw clearCartError;
+    }
+
+    /* =====================================================
+       Success
+       ===================================================== */
 
     return NextResponse.json({
       success: true,
-      order_id: order.id,
-      order_number: order.order_number,
+
+      order_id:
+        order.id,
+
+      order_number:
+        order.order_number,
     });
   } catch (error) {
-    console.error("Create order error:", error);
+    console.error(
+      "Create order error:",
+      error,
+    );
 
     return NextResponse.json(
       {
