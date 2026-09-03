@@ -16,7 +16,9 @@ export type CarouselProduct = {
   images: string[] | null;
   display_settings: DisplaySettings | null;
   active: boolean;
+   sticker?: string | null;
 };
+
 
 function ProductCard({ product }: { product: CarouselProduct }) {
   const showPrice = product.display_settings?.price !== false;
@@ -28,20 +30,41 @@ function ProductCard({ product }: { product: CarouselProduct }) {
       className="group block w-[220px] shrink-0 sm:w-[250px] lg:w-[270px]"
     >
       <div className="overflow-hidden rounded-xl border bg-card shadow-sm transition-transform duration-300 group-hover:scale-[1.04] group-hover:shadow-lg">
-        {image ? (
-          <Image
-            src={image}
-            alt={product.name}
-            width={640}
-            height={640}
-            unoptimized
-            className="aspect-square w-full object-cover"
-          />
-        ) : (
-          <div className="flex aspect-square items-center justify-center bg-muted text-sm text-muted-foreground">
-            No image
-          </div>
-        )}
+        <div className="relative">
+          {image ? (
+            <Image
+              src={image}
+              alt={product.name}
+              width={640}
+              height={640}
+              unoptimized
+              className="aspect-square w-full object-cover"
+            />
+          ) : (
+            <div className="flex aspect-square items-center justify-center bg-muted text-sm text-muted-foreground">
+              No image
+            </div>
+          )}
+
+          {/* Custom sticker */}
+          {product.sticker && (
+            <div className="absolute left-3 top-3">
+              <span
+                className="
+                  inline-flex items-center rounded-full
+                  bg-red-600 px-3 py-1.5
+                  text-xs font-bold tracking-wide text-white
+                  shadow-[3px_3px_0px_white,-3px_-3px_0px_red]
+                  transition-transform duration-300
+                  group-hover:scale-105
+                  animate-sticker-shadow
+                "
+              >
+                ✦ {product.sticker}
+              </span>
+            </div>
+          )}
+        </div>
 
         <div className="p-4">
           <h4 className="font-medium">{product.name}</h4>
@@ -68,6 +91,7 @@ function ProductCard({ product }: { product: CarouselProduct }) {
     </Link>
   );
 }
+
 
 export function ProductCarousel({
   products,

@@ -25,6 +25,7 @@ type StoreProduct = {
   images: string[] | null;
   display_settings: DisplaySettings | null;
   active: boolean;
+    sticker: string | null;
 };
 
 type SiteSettings = {
@@ -157,11 +158,12 @@ export default async function Home() {
               sale_price,
               images,
               display_settings,
-              active
+              active,
+              sticker
             `,
           )
           .eq("active", true)
-            .order("created_at", { ascending: false })
+          .order("created_at", { ascending: false })
       : { data: [], error: null };
 
   if (allProductsError) {
@@ -186,7 +188,8 @@ export default async function Home() {
                 sale_price,
                 images,
                 display_settings,
-                active
+                active,
+                sticker
               )
             `,
         )
@@ -216,13 +219,13 @@ export default async function Home() {
 
     productsByCategory.set(link.category_id, existing);
   }
-// Keep product order deterministic so server and client
-// render the same products in the same positions.
-allProducts.sort((a, b) => a.name.localeCompare(b.name));
+  // Keep product order deterministic so server and client
+  // render the same products in the same positions.
+  allProducts.sort((a, b) => a.name.localeCompare(b.name));
 
-for (const products of productsByCategory.values()) {
-  products.sort((a, b) => a.name.localeCompare(b.name));
-}
+  for (const products of productsByCategory.values()) {
+    products.sort((a, b) => a.name.localeCompare(b.name));
+  }
   /*
    * Build the homepage strips IN THE EXACT ORDER
    * chosen by the admin.
@@ -316,7 +319,7 @@ for (const products of productsByCategory.values()) {
       />
 
       {/* HERO */}
-      <section className="border-b bg-muted/40">
+      <section className="relative  bg-muted/40">
         <div className="mx-auto grid max-w-6xl gap-8 px-4 py-16 sm:px-6 md:grid-cols-[1.1fr_0.9fr] md:py-24">
           <div className="max-w-2xl self-center">
             <p className="mb-4 text-sm font-medium tracking-[0.16em] text-primary">
@@ -340,7 +343,23 @@ for (const products of productsByCategory.values()) {
           </div>
 
           {settings.hero_media?.length ? (
-            <HeroCarousel media={settings.hero_media} />
+            <div className="relative isolate">
+              {/* Soft decorative glow behind the carousel */}
+              <div
+                className="
+        pointer-events-none
+        absolute -inset-6
+        rounded-[2rem]
+        bg-primary/50
+        blur-3xl
+        animate-pulse
+      "
+              />
+
+              <div className="relative">
+                <HeroCarousel media={settings.hero_media} />
+              </div>
+            </div>
           ) : (
             <Card className="justify-center border-primary/20 bg-primary text-primary-foreground">
               <CardContent className="p-8 text-center">
@@ -355,10 +374,64 @@ for (const products of productsByCategory.values()) {
             </Card>
           )}
         </div>
-      </section>
+        {/* Decorative hero-to-products transition */}
+<div className="pointer-events-none absolute bottom-0 left-0 right-0 translate-y-1/2">
+  <div className="mx-auto h-3 max-w-5xl rounded-full bg-primary/20 blur-xl" />
+  <div className="mx-auto -mt-2 h-px max-w-4xl bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+</div>
+    </section>
 
-      {/* PRODUCT STRIPS */}
-      <section id="products" className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+{/* HERO → PRODUCTS TRANSITION */}
+<div className="relative h-16 overflow-hidden bg-background">
+  {/* Soft golden glow */}
+  <div
+    className="
+      pointer-events-none
+      absolute left-1/2 top-1/2
+      h-12 w-[70%]
+      -translate-x-1/2 -translate-y-1/2
+      rounded-full
+      bg-primary/25
+      blur-2xl
+      animate-glow-drift
+    "
+  />
+
+  {/* Elegant moving line */}
+  <div className="absolute left-0 right-0 top-1/2 h-px bg-primary/15">
+    <div
+      className="
+        absolute inset-y-0
+        w-1/4
+        bg-gradient-to-r
+        from-transparent
+        via-primary/70
+        to-transparent
+        animate-line-sweep
+      "
+    />
+  </div>
+
+  {/* Small central diamond */}
+  <div
+    className="
+      absolute left-1/2 top-1/2
+      h-2.5 w-2.5
+      -translate-x-1/2 -translate-y-1/2
+      rotate-45
+      border border-primary/50
+      bg-background
+      shadow-[0_0_14px_rgba(234,179,8,0.45)]
+      animate-soft-pulse
+    "
+  />
+</div>
+
+{/* PRODUCT STRIPS */}
+<section
+  id="products"
+  className="mx-auto max-w-6xl px-4 py-14 sm:px-6"
+>
         <div className="mb-8">
           <p className="text-sm font-medium text-primary">DISCOVER</p>
 

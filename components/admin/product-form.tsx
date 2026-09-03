@@ -69,6 +69,8 @@ export type Product = {
   active: boolean | null;
   display_settings: ProductDisplaySettings | null;
   available_for_sale: boolean;
+  keywords: string[] | null;
+  sticker: string | null;
 };
 export type Category = { id: string; name: string };
 type ImageItem = { preview: string; url?: string; file?: File };
@@ -88,11 +90,13 @@ export function ProductForm({
   const editing = Boolean(product);
   const [name, setName] = useState(product?.name ?? "");
   const [description, setDescription] = useState(product?.description ?? "");
+  const [keywords, setKeywords] = useState<string[]>(product?.keywords ?? []);
   const [size, setSize] = useState(product?.size ?? "");
   const [price, setPrice] = useState(asInputValue(product?.price));
   const [salePrice, setSalePrice] = useState(asInputValue(product?.sale_price));
   const [stock, setStock] = useState(asInputValue(product?.stock));
   const [height, setHeight] = useState(asInputValue(product?.height));
+  const [sticker, setSticker] = useState(product?.sticker ?? "");
   const [width, setWidth] = useState(asInputValue(product?.width));
   const [depth, setDepth] = useState(asInputValue(product?.depth));
   const [weight, setWeight] = useState(asInputValue(product?.weight_grams));
@@ -117,6 +121,7 @@ export function ProductForm({
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [aiAnalyzing, setAiAnalyzing] = useState(false);
 
   function selectImages(event: React.ChangeEvent<HTMLInputElement>) {
     const additions = Array.from(event.target.files ?? []).map((file) => ({
@@ -126,50 +131,46 @@ export function ProductForm({
     setImages((current) => [...current, ...additions]);
     event.target.value = "";
   }
- async function removeImage(index: number) {
-  const image = images[index];
+  async function removeImage(index: number) {
+    const image = images[index];
 
-  // New image that hasn't been uploaded yet
-  if (!image.url) {
-    if (image.file) URL.revokeObjectURL(image.preview);
+    // New image that hasn't been uploaded yet
+    if (!image.url) {
+      if (image.file) URL.revokeObjectURL(image.preview);
 
-    setImages((current) =>
-      current.filter((_, itemIndex) => itemIndex !== index),
-    );
-    return;
-  }
-
-  // Existing Cloudinary image
-  if (!window.confirm("Delete this image permanently?")) return;
-
-  try {
-    const response = await fetch("/api/admin/cloudinary/delete", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        url: image.url,
-      }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || "Failed to delete image.");
+      setImages((current) =>
+        current.filter((_, itemIndex) => itemIndex !== index),
+      );
+      return;
     }
 
-    setImages((current) =>
-      current.filter((_, itemIndex) => itemIndex !== index),
-    );
-  } catch (error) {
-    alert(
-      error instanceof Error
-        ? error.message
-        : "Failed to delete image.",
-    );
+    // Existing Cloudinary image
+    if (!window.confirm("Delete this image permanently?")) return;
+
+    try {
+      const response = await fetch("/api/admin/cloudinary/delete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          url: image.url,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to delete image.");
+      }
+
+      setImages((current) =>
+        current.filter((_, itemIndex) => itemIndex !== index),
+      );
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Failed to delete image.");
+    }
   }
-}
   async function uploadImages() {
     if (!images.some((image) => !image.url && image.file)) return;
     setUploading(true);
@@ -184,7 +185,11 @@ export function ProductForm({
           if (!response.ok)
             throw new Error(data.error || "Image upload failed.");
           URL.revokeObjectURL(image.preview);
-          return { preview: data.url as string, url: data.url as string };
+          return {
+            ...image,
+            preview: data.url as string,
+            url: data.url as string,
+          };
         }),
       );
       setImages(uploaded);
@@ -196,6 +201,75 @@ export function ProductForm({
       );
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function analyzeProductWithAI() {
+    const image = images.find((item) => item.file);
+
+    if (!image?.file) {
+      return alert(
+        "Please select a product image first. AI can analyze one image at a time.",
+      );
+    }
+
+    setAiAnalyzing(true);
+
+    try {
+      const body = new FormData();
+      body.append("image", image.file);
+
+      const response = await fetch("/api/admin/ai/analyze-product", {
+        method: "POST",
+        body,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "AI analysis failed.");
+      }
+
+      if (data.name) {
+        setName(data.name);
+      }
+
+      if (data.description) {
+        setDescription(data.description);
+      }
+      if (Array.isArray(data.keywords)) {
+        setKeywords(
+          data.keywords
+            .filter((keyword: unknown) => typeof keyword === "string")
+            .map((keyword: string) => keyword.trim().toLowerCase())
+            .filter(Boolean),
+        );
+      }
+      if (data.size) {
+        setSize(data.size);
+      }
+
+      // Try to match Gemini's suggested category
+      // with one of our existing categories.
+      if (data.suggestedCategory) {
+        const suggested = availableCategories.find(
+          (category) =>
+            category.name.toLowerCase().trim() ===
+            data.suggestedCategory.toLowerCase().trim(),
+        );
+
+        if (suggested) {
+          setCategoryIds((current) =>
+            current.includes(suggested.id)
+              ? current
+              : [...current, suggested.id],
+          );
+        }
+      }
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "AI analysis failed.");
+    } finally {
+      setAiAnalyzing(false);
     }
   }
   function addVideoUrl() {
@@ -264,6 +338,8 @@ export function ProductForm({
         active,
         available_for_sale: availableForSale,
         display_settings: displaySettings,
+        keywords,
+        sticker: sticker.trim() || null,
       };
       const supabase = createClient();
       const createdProduct = editing
@@ -347,6 +423,83 @@ export function ProductForm({
         </p>
       </div>
       <div className="space-y-4">
+          <Card>
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg">Product Images</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={selectImages}
+            />
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={analyzeProductWithAI}
+                disabled={
+                  aiAnalyzing ||
+                  uploading ||
+                  saving ||
+                  deleting ||
+                  !images.some((image) => image.file)
+                }
+              >
+                {aiAnalyzing ? "Analyzing..." : "✨ Fill with AI"}
+              </Button>
+
+              <p className="text-xs text-muted-foreground">
+                Uses 1 AI analysis. You choose when to use it.
+              </p>
+            </div>
+            {images.length > 0 && (
+              <>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {images.map((image, index) => (
+                    <div
+                      key={`${image.preview}-${index}`}
+                      className="relative overflow-hidden rounded-lg border"
+                    >
+                      <Image
+                        src={image.preview}
+                        alt={`Product image ${index + 1}`}
+                        width={300}
+                        height={300}
+                        unoptimized
+                        className="aspect-square w-full object-cover"
+                      />
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="destructive"
+                        onClick={() => removeImage(index)}
+                        className="absolute right-2 top-2 h-7 w-7"
+                        aria-label={`Remove product image ${index + 1}`}
+                      >
+                        ×
+                      </Button>
+                      {image.url && (
+                        <div className="bg-primary px-2 py-1 text-center text-xs text-primary-foreground">
+                          Uploaded
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <Button
+                  type="button"
+                  onClick={uploadImages}
+                  disabled={uploading || images.every((image) => image.url)}
+                >
+                  {uploading ? "Uploading..." : "Upload Images"}
+                </Button>
+              </>
+            )}
+          </CardContent>
+        </Card>
         <Card>
           <CardHeader className="pb-4">
             <CardTitle className="text-lg">Basic Information</CardTitle>
@@ -359,6 +512,15 @@ export function ProductForm({
               onChange={setName}
               placeholder="e.g. Pearl Jhumka Earrings"
             />
+            <TextField
+  id="sticker"
+  label="Sticker"
+  value={sticker}
+  onChange={setSticker}
+  placeholder="e.g. NEW, BESTSELLER, LIMITED"
+/><p className="-mt-2 text-xs text-muted-foreground">
+  Optional. This sticker will appear on the product card.
+</p>
             <TextField
               id="size"
               label="Size"
@@ -375,6 +537,28 @@ export function ProductForm({
                 placeholder="Describe the product..."
                 rows={4}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="keywords">Keywords</Label>
+
+              <Input
+                id="keywords"
+                value={keywords.join(", ")}
+                onChange={(event) =>
+                  setKeywords(
+                    event.target.value
+                      .split(",")
+                      .map((keyword) => keyword.trim().toLowerCase())
+                      .filter(Boolean),
+                  )
+                }
+                placeholder="e.g. yellow, jhumka, jewellery, gift, traditional"
+              />
+
+              <p className="text-xs text-muted-foreground">
+                Separate keywords with commas. AI can suggest these
+                automatically.
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -483,62 +667,7 @@ export function ProductForm({
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg">Product Images</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Input
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={selectImages}
-            />
-            {images.length > 0 && (
-              <>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  {images.map((image, index) => (
-                    <div
-                      key={`${image.preview}-${index}`}
-                      className="relative overflow-hidden rounded-lg border"
-                    >
-                      <Image
-                        src={image.preview}
-                        alt={`Product image ${index + 1}`}
-                        width={300}
-                        height={300}
-                        unoptimized
-                        className="aspect-square w-full object-cover"
-                      />
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="destructive"
-                        onClick={() => removeImage(index)}
-                        className="absolute right-2 top-2 h-7 w-7"
-                        aria-label={`Remove product image ${index + 1}`}
-                      >
-                        ×
-                      </Button>
-                      {image.url && (
-                        <div className="bg-primary px-2 py-1 text-center text-xs text-primary-foreground">
-                          Uploaded
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                <Button
-                  type="button"
-                  onClick={uploadImages}
-                  disabled={uploading || images.every((image) => image.url)}
-                >
-                  {uploading ? "Uploading..." : "Upload Images"}
-                </Button>
-              </>
-            )}
-          </CardContent>
-        </Card>
+      
         <Card>
           <CardHeader className="pb-4">
             <CardTitle className="text-lg">Product Videos</CardTitle>

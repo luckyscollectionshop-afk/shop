@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
+import Image from "next/image";
 
 type SiteHeaderProps = {
   isLoggedIn: boolean;
@@ -15,38 +16,34 @@ export default function SiteHeader({
   isAdmin,
   cartCount,
 }: SiteHeaderProps) {
-  const [displayCartCount, setDisplayCartCount] =
-    useState(cartCount);
+  const [displayCartCount, setDisplayCartCount] = useState(cartCount);
 
   useEffect(() => {
     function handleCartCountChange(event: Event) {
-      const customEvent =
-        event as CustomEvent<{ count: number }>;
+      const customEvent = event as CustomEvent<{ count: number }>;
 
       setDisplayCartCount(customEvent.detail.count);
     }
 
-    window.addEventListener(
-      "cart-count-change",
-      handleCartCountChange,
-    );
+    window.addEventListener("cart-count-change", handleCartCountChange);
 
     return () => {
-      window.removeEventListener(
-        "cart-count-change",
-        handleCartCountChange,
-      );
+      window.removeEventListener("cart-count-change", handleCartCountChange);
     };
   }, []);
 
   return (
     <header className="border-b bg-background">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-        <Link
-          href="/"
-          className="text-md font-semibold tracking-tight"
-        >
-          Lucky Charm Creation
+        <Link href="/" className="text-md font-semibold tracking-tight">
+          <Image
+            src="/lcc.svg"
+            alt="Lucky Charm Creations"
+            width={150}
+            height={75}
+            priority
+            className="h-auto w-[130px]"
+          />
         </Link>
 
         <nav className="flex items-center gap-2">
@@ -80,20 +77,18 @@ export default function SiteHeader({
                 })}
               >
                 🛒 Cart
-                {displayCartCount > 0
-                  ? ` (${displayCartCount})`
-                  : ""}
+                {displayCartCount > 0 ? ` (${displayCartCount})` : ""}
               </Link>
 
               <Link
-            href="/orders"
-            className={buttonVariants({
-              variant: "ghost",
-              size: "sm",
-            })}
-          >
-            Orders
-          </Link>
+                href="/orders"
+                className={buttonVariants({
+                  variant: "ghost",
+                  size: "sm",
+                })}
+              >
+                Orders
+              </Link>
 
               {isAdmin && (
                 <Link
