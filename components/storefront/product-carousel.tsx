@@ -67,7 +67,9 @@ function ProductCard({ product }: { product: CarouselProduct }) {
         </div>
 
         <div className="p-4">
-          <h4 className="font-medium">{product.name}</h4>
+          <h4 className="font-medium truncate" title={product.name}>
+            {product.name}
+          </h4>
 
           {showPrice && (
             <div className="mt-1 text-sm">

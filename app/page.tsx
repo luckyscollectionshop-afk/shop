@@ -364,7 +364,7 @@ export default async function Home() {
             <Card className="justify-center border-primary/20 bg-primary text-primary-foreground">
               <CardContent className="p-8 text-center">
                 <p className="text-sm font-medium tracking-[0.2em]">
-                  LUCKY Charm Creation
+                  LUCKY Charm Creations
                 </p>
 
                 <p className="mt-3 text-2xl font-semibold">
@@ -488,7 +488,7 @@ export default async function Home() {
       </section>
 
       <footer className="border-t py-8 text-center text-sm text-muted-foreground">
-        © {new Date().getFullYear()} Lucky Charm Creation
+        © {new Date().getFullYear()} Lucky Charm Creations
       </footer>
     </main>
   );

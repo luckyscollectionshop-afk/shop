@@ -46,7 +46,7 @@ export async function generateMetadata({
 
   if (!product) {
     return {
-      title: "Product | Lucky Charm Creation",
+      title: "Product | Lucky Charm Creations",
     };
   }
 
@@ -55,18 +55,18 @@ export async function generateMetadata({
   const image = images[0] ?? null;
 
   return {
-    title: `${product.name} | Lucky Charm Creation`,
+    title: `${product.name} | Lucky Charm Creations`,
 
     description:
       product.description ||
-      `Discover ${product.name} at Lucky Charm Creation.`,
+      `Discover ${product.name} at Lucky Charm Creations.`,
 
     openGraph: {
-      title: `${product.name} | Lucky Charm Creation`,
+      title: `${product.name} | Lucky Charm Creations`,
 
       description:
         product.description ||
-        `Discover ${product.name} at Lucky Charm Creation.`,
+        `Discover ${product.name} at Lucky Charm Creations.`,
 
       type: "website",
 
@@ -85,11 +85,11 @@ export async function generateMetadata({
     twitter: {
       card: "summary_large_image",
 
-      title: `${product.name} | Lucky Charm Creation`,
+      title: `${product.name} | Lucky Charm Creations`,
 
       description:
         product.description ||
-        `Discover ${product.name} at Lucky Charm Creation.`,
+        `Discover ${product.name} at Lucky Charm Creations.`,
 
       images: image ? [image] : [],
     },

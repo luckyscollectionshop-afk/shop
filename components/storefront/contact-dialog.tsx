@@ -49,7 +49,7 @@ export function ContactDialog() {
         {
           name: name.trim(),
           email: email.trim(),
-          subject: subject.trim() || "Message from Lucky Charm Creation",
+          subject: subject.trim() || "Message from Lucky Charm Creations",
           message: message.trim(),
           reply_to: email.trim(),
         },
@@ -108,7 +108,7 @@ export function ContactDialog() {
           >
             <CardHeader className="flex flex-row items-start justify-between gap-4">
               <div>
-                <CardTitle>Contact Lucky Charm Creation</CardTitle>
+                <CardTitle>Contact Lucky Charm Creations</CardTitle>
 
                 <p className="mt-2 text-sm text-muted-foreground">
                   Having trouble with the website or need help with something?

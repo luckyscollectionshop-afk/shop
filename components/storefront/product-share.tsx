@@ -50,8 +50,8 @@ export default function ProductShare({
   const isVideo = Boolean(videoUrl);
 
   const shareText = isVideo
-    ? `Check out this video of ${productName} at Lucky Charm Creation 🛍️`
-    : `Check out ${productName} at Lucky Charm Creation 🛍️`;
+    ? `Check out this video of ${productName} at Lucky Charm Creations 🛍️`
+    : `Check out ${productName} at Lucky Charm Creations 🛍️`;
 
   async function copyLink() {
     try {

@@ -4,6 +4,13 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import Image from "next/image";
+import { Menu, ChevronDown } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type SiteHeaderProps = {
   isLoggedIn: boolean;
@@ -21,7 +28,6 @@ export default function SiteHeader({
   useEffect(() => {
     function handleCartCountChange(event: Event) {
       const customEvent = event as CustomEvent<{ count: number }>;
-
       setDisplayCartCount(customEvent.detail.count);
     }
 
@@ -34,35 +40,37 @@ export default function SiteHeader({
 
   return (
     <header className="border-b bg-background">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-        <Link href="/" className="text-md font-semibold tracking-tight">
+      <div className="mx-auto flex h-16 max-w-full items-center justify-between pr-4">
+        {/* LOGO */}
+        <Link
+          href="/"
+          className="shrink-0"
+        >
           <Image
             src="/lcc.svg"
             alt="Lucky Charm Creations"
-            width={150}
-            height={75}
+            width={103}
+            height={64}
             priority
-            className="h-auto w-[130px]"
+            className="h-auto w-[103px]"
           />
         </Link>
 
-        <nav className="flex items-center gap-2">
+        {/* ========================================================= */}
+        {/* DESKTOP NAVIGATION */}
+        {/* ========================================================= */}
+
+        <nav className="hidden items-center gap-2 sm:flex">
           <Link
             href="/"
-            className={buttonVariants({
-              variant: "ghost",
-              size: "sm",
-            })}
+            className={buttonVariants({ variant: "ghost", size: "sm" })}
           >
             Home
           </Link>
 
           <Link
             href="/products"
-            className={buttonVariants({
-              variant: "ghost",
-              size: "sm",
-            })}
+            className={buttonVariants({ variant: "ghost", size: "sm" })}
           >
             Products
           </Link>
@@ -71,10 +79,7 @@ export default function SiteHeader({
             <>
               <Link
                 href="/cart"
-                className={buttonVariants({
-                  variant: "ghost",
-                  size: "sm",
-                })}
+                className={buttonVariants({ variant: "ghost", size: "sm" })}
               >
                 🛒 Cart
                 {displayCartCount > 0 ? ` (${displayCartCount})` : ""}
@@ -82,10 +87,7 @@ export default function SiteHeader({
 
               <Link
                 href="/orders"
-                className={buttonVariants({
-                  variant: "ghost",
-                  size: "sm",
-                })}
+                className={buttonVariants({ variant: "ghost", size: "sm" })}
               >
                 Orders
               </Link>
@@ -93,10 +95,7 @@ export default function SiteHeader({
               {isAdmin && (
                 <Link
                   href="/admin"
-                  className={buttonVariants({
-                    variant: "ghost",
-                    size: "sm",
-                  })}
+                  className={buttonVariants({ variant: "ghost", size: "sm" })}
                 >
                   Admin
                 </Link>
@@ -105,10 +104,7 @@ export default function SiteHeader({
               <form action="/auth/signout" method="POST">
                 <button
                   type="submit"
-                  className={buttonVariants({
-                    variant: "outline",
-                    size: "sm",
-                  })}
+                  className="w-full rounded-sm px-3 py-2 text-left text-sm text-destructive transition-colors hover:bg-muted"
                 >
                   Sign out
                 </button>
@@ -118,25 +114,147 @@ export default function SiteHeader({
             <>
               <Link
                 href="/auth/login"
-                className={buttonVariants({
-                  variant: "ghost",
-                  size: "sm",
-                })}
+                className={buttonVariants({ variant: "ghost", size: "sm" })}
               >
                 Sign in
               </Link>
 
               <Link
                 href="/auth/signup"
-                className={buttonVariants({
-                  size: "sm",
-                })}
+                className={buttonVariants({ size: "sm" })}
               >
                 Create account
               </Link>
             </>
           )}
         </nav>
+
+        {/* ========================================================= */}
+        {/* MOBILE NAVIGATION */}
+        {/* ========================================================= */}
+
+        <div className="sm:hidden">
+          <DropdownMenu>
+            {/* MENU BUTTON */}
+            <DropdownMenuTrigger
+              render={
+                <button
+                  type="button"
+                  className={
+                    buttonVariants({
+                      variant: "ghost",
+                      size: "sm",
+                    }) + " hover:bg-muted"
+                  }
+                >
+                  <Menu className="h-4 w-4" />
+                  <span>Menu</span>
+                  <ChevronDown className="h-4 w-4 opacity-50" />
+                </button>
+              }
+            />
+
+            {/* DROPDOWN */}
+            <DropdownMenuContent align="end" className="w-48 bg-background">
+              {/* HOME */}
+              <DropdownMenuItem
+                className="w-full p-0"
+                render={<Link href="/" />}
+              >
+                <span className="flex w-full items-center px-3 py-2 hover:bg-muted">
+                  Home
+                </span>
+              </DropdownMenuItem>
+
+              {/* PRODUCTS */}
+              <DropdownMenuItem
+                className="w-full p-0"
+                render={<Link href="/products" />}
+              >
+                <span className="flex w-full items-center px-3 py-2 hover:bg-muted">
+                  Products
+                </span>
+              </DropdownMenuItem>
+
+              {isLoggedIn ? (
+                <>
+                  {/* CART */}
+                  <DropdownMenuItem
+                    className="w-full p-0"
+                    render={<Link href="/cart" />}
+                  >
+                    <span className="flex w-full items-center px-3 py-2 hover:bg-muted">
+                      🛒 Cart
+                      {displayCartCount > 0 ? ` (${displayCartCount})` : ""}
+                    </span>
+                  </DropdownMenuItem>
+
+                  {/* ORDERS */}
+                  <DropdownMenuItem
+                    className="w-full p-0"
+                    render={<Link href="/orders" />}
+                  >
+                    <span className="flex w-full items-center px-3 py-2 hover:bg-muted">
+                      Orders
+                    </span>
+                  </DropdownMenuItem>
+
+                  {/* ADMIN */}
+                  {isAdmin && (
+                    <DropdownMenuItem
+                      className="w-full p-0"
+                      render={<Link href="/admin" />}
+                    >
+                      <span className="flex w-full items-center px-3 py-2 hover:bg-muted">
+                        Admin
+                      </span>
+                    </DropdownMenuItem>
+                  )}
+
+                  {/* SIGN OUT */}
+                  <div className="mt-1 border-t p-1">
+                    <form
+                      action="/auth/signout"
+                      method="POST"
+                      className="w-full"
+                    >
+                      <button
+                        type="submit"
+                        className="w-full rounded-sm px-3 py-2 text-left text-sm text-destructive transition-colors hover:bg-muted"
+                      >
+                        Sign out
+                      </button>
+                    </form>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* SIGN IN */}
+                  <DropdownMenuItem
+                    className="w-full p-0"
+                    render={<Link href="/auth/login" />}
+                  >
+                    <span className="flex w-full items-center px-3 py-2 hover:bg-muted">
+                      Sign in
+                    </span>
+                  </DropdownMenuItem>
+
+                  {/* CREATE ACCOUNT */}
+                  <DropdownMenuItem
+                    className="w-full p-0"
+                    render={<Link href="/auth/signup" />}
+                  >
+                    <span className="flex w-full items-center px-3 py-2 hover:bg-muted">
+                      <span className="font-medium text-primary">
+                        Create account
+                      </span>
+                    </span>
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
     </header>
   );

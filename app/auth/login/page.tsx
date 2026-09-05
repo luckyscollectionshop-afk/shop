@@ -78,7 +78,7 @@ function LoginForm() {
           </h1>
 
           <p className="mt-3 text-sm text-muted-foreground">
-            Sign in to your Lucky Charm Creation account
+            Sign in to your Lucky Charm Creations account
           </p>
         </div>
 

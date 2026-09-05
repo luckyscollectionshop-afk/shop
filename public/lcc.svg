@@ -4,6 +4,9 @@
   viewBox="0 0 420 260"
   xmlns="http://www.w3.org/2000/svg"
 >
+ <!-- Deep Black Background -->
+  <rect width="800" height="600" fill="#0D0D0D"/>
+
   <defs>
     <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#8A6418"/>
