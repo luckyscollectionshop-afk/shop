@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
 type RouteProps = {
   params: Promise<{
@@ -51,7 +52,7 @@ export async function PATCH(
 
   const { data: order, error: orderError } = await supabase
     .from("orders")
-    .select("id, status, payment_status")
+   .select("id, user_id, order_number, status, payment_status")
     .eq("id", id)
     .maybeSingle();
 
@@ -119,7 +120,62 @@ export async function PATCH(
       { status: 500 },
     );
   }
+/* =====================================================
+   Create order status notification
+   ===================================================== */
 
+const notificationContent: Record<
+  AllowedStatus,
+  { type: string; title: string; message: string }
+> = {
+  processing: {
+    type: "order_processing",
+    title: "Order is being processed",
+    message: `Your order ${order.order_number} is now being processed.`,
+  },
+
+  shipped: {
+    type: "order_shipped",
+    title: "Order shipped",
+    message: `Your order ${order.order_number} has been shipped.`,
+  },
+
+  delivered: {
+    type: "order_delivered",
+    title: "Order delivered",
+    message: `Your order ${order.order_number} has been delivered.`,
+  },
+
+  cancelled: {
+    type: "order_cancelled",
+    title: "Order cancelled",
+    message: `Your order ${order.order_number} has been cancelled.`,
+  },
+};
+
+const notification = notificationContent[
+  newStatus as AllowedStatus
+];
+
+const serviceSupabase = createServiceRoleClient();
+
+const { error: notificationError } =
+  await serviceSupabase
+    .from("notifications")
+    .insert({
+      user_id: order.user_id,
+      type: notification.type,
+      title: notification.title,
+      message: notification.message,
+      order_id: order.id,
+    });
+
+if (notificationError) {
+  console.error(
+    "Failed to create order notification:",
+    notificationError,
+  );
+}
   return NextResponse.json({
     success: true,
     status: newStatus,

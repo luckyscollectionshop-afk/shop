@@ -100,7 +100,7 @@ export default async function ProductsPage({
 
   return (
     <main className="min-h-screen bg-background">
-      <SiteHeader isLoggedIn={!!user} isAdmin={isAdmin} cartCount={cartCount} />
+      <SiteHeader isLoggedIn={!!user} isAdmin={isAdmin} cartCount={cartCount} userId={user?.id} />
 
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
         <h1 className="text-3xl font-semibold tracking-tight">Products</h1>

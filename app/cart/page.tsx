@@ -60,6 +60,7 @@ export default async function CartPage() {
           isLoggedIn={true}
           isAdmin={isAdmin}
           cartCount={0}
+          userId={user.id}
         />
 
         <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6">
@@ -153,6 +154,7 @@ export default async function CartPage() {
         isLoggedIn={true}
         isAdmin={isAdmin}
         cartCount={cartCount}
+        userId={user?.id}
       />
 
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
 type RouteProps = {
   params: Promise<{
@@ -42,7 +43,7 @@ export async function PATCH(
 
   const { data: order, error: orderError } = await supabase
     .from("orders")
-    .select("id, status, payment_status")
+    .select("id, user_id, order_number, status, payment_status")
     .eq("id", id)
     .maybeSingle();
 
@@ -86,17 +87,46 @@ export async function PATCH(
     updateData.status = "pending_payment";
   }
 
-  const { error } = await supabase
-    .from("orders")
-    .update(updateData)
-    .eq("id", id);
+ const { error } = await supabase
+  .from("orders")
+  .update(updateData)
+  .eq("id", id);
 
-  if (error) {
-    return NextResponse.json(
-      { error: error.message },
-      { status: 500 },
+if (error) {
+  return NextResponse.json(
+    { error: error.message },
+    { status: 500 },
+  );
+}
+
+/* =========================================================
+   Create customer notification
+   ========================================================= */
+
+if (
+  paymentStatus === "paid" &&
+  order.payment_status !== "paid"
+) {
+  const serviceSupabase = createServiceRoleClient();
+
+  const { error: notificationError } =
+    await serviceSupabase
+      .from("notifications")
+      .insert({
+        user_id: order.user_id,
+        type: "payment_confirmed",
+        title: "Payment confirmed",
+        message: `Your payment for order ${order.order_number} has been confirmed.`,
+        order_id: order.id,
+      });
+
+  if (notificationError) {
+    console.error(
+      "Failed to create payment notification:",
+      notificationError,
     );
   }
+}
 
   return NextResponse.json({
     success: true,

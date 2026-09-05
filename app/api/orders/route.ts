@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
 /* =========================================================
    POST — Create order
@@ -70,11 +71,7 @@ export async function POST(request: Request) {
        Payment method validation
        ===================================================== */
 
-    if (
-      !["twint", "bank_transfer"].includes(
-        payment_method,
-      )
-    ) {
+    if (!["twint", "bank_transfer"].includes(payment_method)) {
       return NextResponse.json(
         {
           error: "Please select a valid payment method.",
@@ -87,12 +84,11 @@ export async function POST(request: Request) {
        Find user's cart
        ===================================================== */
 
-    const { data: cart, error: cartError } =
-      await supabase
-        .from("carts")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle();
+    const { data: cart, error: cartError } = await supabase
+      .from("carts")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
     if (cartError) {
       throw cartError;
@@ -111,10 +107,7 @@ export async function POST(request: Request) {
        Get cart items + products
        ===================================================== */
 
-    const {
-      data: cartItems,
-      error: itemsError,
-    } = await supabase
+    const { data: cartItems, error: itemsError } = await supabase
       .from("cart_items")
       .select(
         `
@@ -171,8 +164,7 @@ export async function POST(request: Request) {
       if (!item.product) {
         return NextResponse.json(
           {
-            error:
-              "One of the products in your cart is no longer available.",
+            error: "One of the products in your cart is no longer available.",
           },
           { status: 400 },
         );
@@ -187,8 +179,7 @@ export async function POST(request: Request) {
       if (!product.active) {
         return NextResponse.json(
           {
-            error:
-              `${product.name} is no longer available.`,
+            error: `${product.name} is no longer available.`,
           },
           { status: 400 },
         );
@@ -196,8 +187,7 @@ export async function POST(request: Request) {
 
       const stock = product.stock ?? 0;
 
-      const availableForSale =
-        product.available_for_sale ?? false;
+      const availableForSale = product.available_for_sale ?? false;
 
       /* ---------------------------------------------------
          Determine product state
@@ -219,14 +209,11 @@ export async function POST(request: Request) {
          stock > 0
          --------------------------------------------------- */
 
-      const isPreBooking =
-        !availableForSale && stock <= 0;
+      const isPreBooking = !availableForSale && stock <= 0;
 
-      const isNormalSale =
-        availableForSale && stock > 0;
+      const isNormalSale = availableForSale && stock > 0;
 
-      const canOrder =
-        isNormalSale || isPreBooking;
+      const canOrder = isNormalSale || isPreBooking;
 
       /* ---------------------------------------------------
          Product cannot currently be ordered
@@ -235,8 +222,7 @@ export async function POST(request: Request) {
       if (!canOrder) {
         return NextResponse.json(
           {
-            error:
-              `${product.name} is currently unavailable.`,
+            error: `${product.name} is currently unavailable.`,
           },
           { status: 400 },
         );
@@ -250,14 +236,10 @@ export async function POST(request: Request) {
          therefore stock does NOT limit quantity.
          --------------------------------------------------- */
 
-      if (
-        !isPreBooking &&
-        item.quantity > stock
-      ) {
+      if (!isPreBooking && item.quantity > stock) {
         return NextResponse.json(
           {
-            error:
-              `Not enough stock available for ${product.name}.`,
+            error: `Not enough stock available for ${product.name}.`,
           },
           { status: 400 },
         );
@@ -268,32 +250,21 @@ export async function POST(request: Request) {
        Calculate subtotal
        ===================================================== */
 
-    const subtotal = items.reduce(
-      (total, item) => {
-        if (!item.product) {
-          return total;
-        }
+    const subtotal = items.reduce((total, item) => {
+      if (!item.product) {
+        return total;
+      }
 
-        const price =
-          item.product.sale_price ??
-          item.product.price;
+      const price = item.product.sale_price ?? item.product.price;
 
-        return (
-          total +
-          Number(price) * item.quantity
-        );
-      },
-      0,
-    );
+      return total + Number(price) * item.quantity;
+    }, 0);
 
     /* =====================================================
        Get storefront settings
        ===================================================== */
 
-    const {
-      data: storefrontSettings,
-      error: settingsError,
-    } = await supabase
+    const { data: storefrontSettings, error: settingsError } = await supabase
       .from("storefront_settings")
       .select(
         `
@@ -315,14 +286,10 @@ export async function POST(request: Request) {
        Validate payment method availability
        ===================================================== */
 
-    if (
-      payment_method === "twint" &&
-      !storefrontSettings?.twint_enabled
-    ) {
+    if (payment_method === "twint" && !storefrontSettings?.twint_enabled) {
       return NextResponse.json(
         {
-          error:
-            "TWINT is currently unavailable.",
+          error: "TWINT is currently unavailable.",
         },
         { status: 400 },
       );
@@ -334,8 +301,7 @@ export async function POST(request: Request) {
     ) {
       return NextResponse.json(
         {
-          error:
-            "Bank transfer is currently unavailable.",
+          error: "Bank transfer is currently unavailable.",
         },
         { status: 400 },
       );
@@ -345,30 +311,23 @@ export async function POST(request: Request) {
        Calculate shipping
        ===================================================== */
 
-    const shippingCost =
-      storefrontSettings?.shipping_enabled
-        ? storefrontSettings.free_shipping
-          ? 0
-          : Number(
-              storefrontSettings.shipping_price ?? 0,
-            )
-        : 0;
+    const shippingCost = storefrontSettings?.shipping_enabled
+      ? storefrontSettings.free_shipping
+        ? 0
+        : Number(storefrontSettings.shipping_price ?? 0)
+      : 0;
 
     /* =====================================================
        Calculate final total
        ===================================================== */
 
-    const total =
-      subtotal + shippingCost;
+    const total = subtotal + shippingCost;
 
     /* =====================================================
        Create order
        ===================================================== */
 
-    const {
-      data: order,
-      error: orderError,
-    } = await supabase
+    const { data: order, error: orderError } = await supabase
       .from("orders")
       .insert({
         user_id: user.id,
@@ -385,27 +344,19 @@ export async function POST(request: Request) {
 
         total,
 
-        shipping_name:
-          full_name.trim(),
+        shipping_name: full_name.trim(),
 
-        shipping_phone:
-          phone.trim(),
+        shipping_phone: phone.trim(),
 
-        shipping_address:
-          address.trim(),
+        shipping_address: address.trim(),
 
-        shipping_city:
-          city.trim(),
+        shipping_city: city.trim(),
 
-        shipping_postal_code:
-          postal_code.trim(),
+        shipping_postal_code: postal_code.trim(),
 
-        shipping_country:
-          country.trim(),
+        shipping_country: country.trim(),
       })
-      .select(
-        "id, order_number",
-      )
+      .select("id, order_number")
       .single();
 
     if (orderError) {
@@ -416,54 +367,37 @@ export async function POST(request: Request) {
        Create order items
        ===================================================== */
 
-    const orderItems = items.map(
-      (item) => {
-        const product =
-          item.product!;
+    const orderItems = items.map((item) => {
+      const product = item.product!;
 
-        const unitPrice =
-          product.sale_price ??
-          product.price;
+      const unitPrice = product.sale_price ?? product.price;
 
-        return {
-          order_id: order.id,
+      return {
+        order_id: order.id,
 
-          product_id: product.id,
+        product_id: product.id,
 
-          product_name:
-            product.name,
+        product_name: product.name,
 
-          quantity:
-            item.quantity,
+        quantity: item.quantity,
 
-          unit_price:
-            Number(unitPrice),
+        unit_price: Number(unitPrice),
 
-          total_price:
-            Number(unitPrice) *
-            item.quantity,
+        total_price: Number(unitPrice) * item.quantity,
 
-          weight_grams:
-            product.weight_grams,
+        weight_grams: product.weight_grams,
 
-          size:
-            product.size,
+        size: product.size,
 
-          height:
-            product.height,
+        height: product.height,
 
-          width:
-            product.width,
+        width: product.width,
 
-          depth:
-            product.depth,
-        };
-      },
-    );
+        depth: product.depth,
+      };
+    });
 
-    const {
-      error: orderItemsError,
-    } = await supabase
+    const { error: orderItemsError } = await supabase
       .from("order_items")
       .insert(orderItems);
 
@@ -475,31 +409,22 @@ export async function POST(request: Request) {
        Update user's profile with shipping information
        ===================================================== */
 
-    const {
-      error: profileError,
-    } = await supabase
+    const { error: profileError } = await supabase
       .from("profiles")
       .update({
-        full_name:
-          full_name.trim(),
+        full_name: full_name.trim(),
 
-        phone:
-          phone.trim(),
+        phone: phone.trim(),
 
-        address:
-          address.trim(),
+        address: address.trim(),
 
-        city:
-          city.trim(),
+        city: city.trim(),
 
-        postal_code:
-          postal_code.trim(),
+        postal_code: postal_code.trim(),
 
-        country:
-          country.trim(),
+        country: country.trim(),
 
-        updated_at:
-          new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       })
       .eq("id", user.id);
 
@@ -511,9 +436,7 @@ export async function POST(request: Request) {
        Clear cart after successful order creation
        ===================================================== */
 
-    const {
-      error: clearCartError,
-    } = await supabase
+    const { error: clearCartError } = await supabase
       .from("cart_items")
       .delete()
       .eq("cart_id", cart.id);
@@ -521,7 +444,70 @@ export async function POST(request: Request) {
     if (clearCartError) {
       throw clearCartError;
     }
+    /* =========================================================
+   Create notifications
+   - Customer: order placed
+   - Admins: new order received
+   ========================================================= */
 
+    const serviceSupabase = createServiceRoleClient();
+
+    /* ---------------------------------------------------------
+   Customer notification
+   --------------------------------------------------------- */
+
+    const { error: customerNotificationError } = await serviceSupabase
+      .from("notifications")
+      .insert({
+        user_id: user.id,
+        type: "order_placed",
+        title: "Order placed",
+        message: `Your order ${order.order_number} has been placed successfully.`,
+        order_id: order.id,
+      });
+
+    if (customerNotificationError) {
+      console.error(
+        "Failed to create customer order notification:",
+        customerNotificationError,
+      );
+    }
+
+    /* ---------------------------------------------------------
+   Find all admins
+   --------------------------------------------------------- */
+
+    const { data: admins, error: adminsError } = await serviceSupabase
+      .from("profiles")
+      .select("id")
+      .eq("role", "admin");
+
+    if (adminsError) {
+      console.error("Failed to find admins for notification:", adminsError);
+    } else if (admins && admins.length > 0) {
+      /* -------------------------------------------------------
+     Admin notification
+     ------------------------------------------------------- */
+
+      const adminNotifications = admins.map((admin) => ({
+        user_id: admin.id,
+        type: "admin_order_placed",
+        title: "New order received",
+        message: `A new order ${order.order_number} has been placed.`,
+        order_id: order.id,
+      }));
+
+      const { error: adminNotificationError } = await serviceSupabase
+        .from("notifications")
+        .insert(adminNotifications);
+
+      if (adminNotificationError) {
+        console.error(
+          "Failed to create admin order notification:",
+          adminNotificationError,
+        );
+      }
+    }
     /* =====================================================
        Success
        ===================================================== */
@@ -529,24 +515,17 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
 
-      order_id:
-        order.id,
+      order_id: order.id,
 
-      order_number:
-        order.order_number,
+      order_number: order.order_number,
     });
   } catch (error) {
-    console.error(
-      "Create order error:",
-      error,
-    );
+    console.error("Create order error:", error);
 
     return NextResponse.json(
       {
         error:
-          error instanceof Error
-            ? error.message
-            : "Failed to create order.",
+          error instanceof Error ? error.message : "Failed to create order.",
       },
       { status: 500 },
     );

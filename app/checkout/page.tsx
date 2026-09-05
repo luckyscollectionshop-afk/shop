@@ -107,6 +107,7 @@ export default async function CheckoutPage() {
         isLoggedIn={true}
         isAdmin={isAdmin}
         cartCount={validItems.reduce((total, item) => total + item.quantity, 0)}
+         userId={user.id}
       />
 
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">

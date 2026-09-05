@@ -45,7 +45,7 @@ delivered_at,
   const isAdmin = profile?.role === "admin";
   return (
     <main className="min-h-screen bg-background">
-      <SiteHeader isLoggedIn={true} isAdmin={isAdmin} cartCount={0} />
+      <SiteHeader isLoggedIn={true} isAdmin={isAdmin} cartCount={0} userId={user.id} />
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
         <div className="mb-8">
           <Link

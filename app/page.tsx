@@ -303,7 +303,7 @@ export default async function Home() {
     <main
       className={`site-theme-${settings.theme} min-h-screen bg-background text-foreground`}
     >
-      <SiteHeader isLoggedIn={!!user} isAdmin={isAdmin} cartCount={cartCount} />
+      <SiteHeader isLoggedIn={!!user} isAdmin={isAdmin} cartCount={cartCount}  userId={user?.id} />
 
       <SocialFloat
         settings={

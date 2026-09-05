@@ -225,6 +225,7 @@ export default async function ProductPage({
         isLoggedIn={!!user}
         isAdmin={isAdmin}
         cartCount={cartCount}
+        userId={user?.id}
       />
 
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">

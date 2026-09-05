@@ -43,6 +43,7 @@ export default async function OrdersPage() {
         isLoggedIn={true}
         isAdmin={isAdmin}
         cartCount={0}
+         userId={user.id}
       />
 
       <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
