@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import emailjs from "@emailjs/nodejs";
+import { SHOP_NAME } from "@/app/constants";
 
 export async function POST(request: Request) {
   try {
@@ -46,7 +47,7 @@ export async function POST(request: Request) {
       {
         name,
         email,
-        subject: subject || "Message from Lucky Charm Creation",
+        subject: subject || `Message from ${SHOP_NAME}`,
         message,
         reply_to: email,
       },
