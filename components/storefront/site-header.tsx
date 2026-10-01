@@ -50,14 +50,31 @@ const router = useRouter();
     };
   }, []);
 
- useEffect(() => {
+useEffect(() => {
   if (!isAdmin || !userId) {
     return;
   }
 
+  let active = true;
+  let unsubscribe: (() => void) | null = null;
+
   void registerWebPushNotifications(() => {
-    router.push("/admin/orders");
+    if (active) {
+      router.push("/admin/orders");
+    }
+  }).then((cleanup) => {
+    if (!active) {
+      cleanup?.();
+      return;
+    }
+
+    unsubscribe = cleanup;
   });
+
+  return () => {
+    active = false;
+    unsubscribe?.();
+  };
 }, [isAdmin, userId, router]);
 
   return (

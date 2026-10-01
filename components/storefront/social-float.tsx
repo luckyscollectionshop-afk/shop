@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import Image from "next/image";
+import SafeImage from "@/components/storefront/safe-image";
 
 type SocialLink = {
   id: string;
@@ -19,6 +19,27 @@ type SocialSettings = {
 type SocialFloatProps = {
   settings: SocialSettings;
 };
+
+
+function SocialIcon({
+  image,
+  name,
+}: {
+  image: string;
+  name: string;
+}) {
+  return (
+    <SafeImage
+      src={image}
+      alt={name || "Social"}
+      width={64}
+      height={64}
+      deliveryWidth={300}
+      className="h-full w-full object-cover"
+    />
+  );
+}
+
 
 export function SocialFloat({ settings }: SocialFloatProps) {
   const [open, setOpen] = useState(false);
@@ -39,57 +60,55 @@ export function SocialFloat({ settings }: SocialFloatProps) {
   );
 
   async function sendMessage(event: React.FormEvent<HTMLFormElement>) {
-  event.preventDefault();
+    event.preventDefault();
 
-  if (!name.trim() || !email.trim() || !message.trim()) {
-    alert("Please fill in your name, email and message.");
-    return;
-  }
-
-  setSending(true);
-
-  try {
-    const response = await fetch("/api/contact", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name: name.trim(),
-        email: email.trim(),
-        subject: "Contact message",
-        message: message.trim(),
-      }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok || !data.success) {
-      throw new Error(
-        data?.error || "Could not send your message.",
-      );
+    if (!name.trim() || !email.trim() || !message.trim()) {
+      alert("Please fill in your name, email and message.");
+      return;
     }
 
-    alert("Your message has been sent successfully. Thank you! ❤️");
+    setSending(true);
 
-    setName("");
-    setEmail("");
-    setMessage("");
+    try {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim(),
+          subject: "Contact message",
+          message: message.trim(),
+        }),
+      });
 
-    setContactOpen(false);
-    setOpen(false);
-  } catch (error) {
-    console.error("Contact form error:", error);
+      const data = await response.json();
 
-    alert(
-      error instanceof Error
-        ? error.message
-        : "Sorry, your message could not be sent. Please try again.",
-    );
-  } finally {
-    setSending(false);
+      if (!response.ok || !data.success) {
+        throw new Error(data?.error || "Could not send your message.");
+      }
+
+      alert("Your message has been sent successfully. Thank you! ❤️");
+
+      setName("");
+      setEmail("");
+      setMessage("");
+
+      setContactOpen(false);
+      setOpen(false);
+    } catch (error) {
+      console.error("Contact form error:", error);
+
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Sorry, your message could not be sent. Please try again.",
+      );
+    } finally {
+      setSending(false);
+    }
   }
-}
 
   return (
     <>
@@ -209,8 +228,6 @@ export function SocialFloat({ settings }: SocialFloatProps) {
             {/* HEADER */}
 
             <div className="flex shrink-0 items-start justify-center gap-4 p-5 sm:p-6">
-              
-
               <Button
                 type="button"
                 variant="ghost"
@@ -229,8 +246,6 @@ export function SocialFloat({ settings }: SocialFloatProps) {
                 ✕
               </Button>
             </div>
-
-           
 
             {/* SCROLLABLE CIRCLES */}
 
@@ -316,12 +331,9 @@ export function SocialFloat({ settings }: SocialFloatProps) {
                           "
                         >
                           {link.icon_url ? (
-                            <Image
-                              src={link.icon_url}
-                              alt={link.name || "Social"}
-                              width={64}
-                              height={64}
-                              className="h-full w-full object-cover"
+                            <SocialIcon
+                              image={link.icon_url}
+                              name={link.name}
                             />
                           ) : (
                             <span className="text-2xl font-bold">✦</span>
@@ -421,8 +433,6 @@ export function SocialFloat({ settings }: SocialFloatProps) {
                 </button>
               </div>
             </div>
-
-            
           </aside>
         </div>
       )}

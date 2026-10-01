@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { SHOP_NAME } from "@/app/constants";
-
+import SafeImage from "@/components/storefront/safe-image";
 export type HeroMedia = {
   url: string;
   type: "image" | "youtube";
@@ -75,6 +75,28 @@ function getYouTubeThumbnail(url: string) {
   return null;
 }
 
+function HeroImage({
+  url,
+  alt,
+  priority,
+}: {
+  url: string;
+  alt: string;
+  priority: boolean;
+}) {
+  return (
+    <SafeImage
+      src={url}
+      alt={alt}
+      width={800}
+      height={960}
+      deliveryWidth={800}
+      priority={priority}
+      className="h-full w-full object-cover"
+    />
+  );
+}
+
 export function HeroCarousel({ media }: { media: HeroMedia[] }) {
   const [active, setActive] = useState(0);
   const [youtubePlaying, setYoutubePlaying] = useState(false);
@@ -118,18 +140,18 @@ export function HeroCarousel({ media }: { media: HeroMedia[] }) {
    * YouTube does not automatically load or play.
    */
   useEffect(() => {
-    if (!hasMultiple || !media[safeActive]) {
+    if (!hasMultiple || !media[safeActive] || youtubePlaying) {
       return;
     }
 
     const timer = window.setTimeout(() => {
-      setYoutubePlaying(false);
-
       setActive((current) => (current + 1) % media.length);
     }, 6000);
 
-    return () => window.clearTimeout(timer);
-  }, [active, hasMultiple, media, safeActive]);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [active, hasMultiple, media, safeActive, youtubePlaying]);
 
   if (!item) return null;
 
@@ -142,14 +164,10 @@ export function HeroCarousel({ media }: { media: HeroMedia[] }) {
   return (
     <div className="relative aspect-[5/6] overflow-hidden rounded-xl bg-muted shadow-lg">
       {item.type === "image" ? (
-        <Image
+        <HeroImage
           key={item.url}
-          src={item.url}
+          url={item.url}
           alt={`${SHOP_NAME} feature ${safeActive + 1}`}
-          width={1000}
-          height={800}
-          unoptimized
-          className="h-full w-full object-cover"
           priority={safeActive === 0}
         />
       ) : youtubePlaying && youtubeEmbedUrl ? (

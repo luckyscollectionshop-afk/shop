@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import SafeImage from "@/components/storefront/safe-image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -235,8 +235,46 @@ export function SiteSettingsForm({
     );
   }
 
-  function removeSocialLink(id: string) {
-    setSocialLinks((current) => current.filter((link) => link.id !== id));
+  async function removeSocialLink(id: string) {
+    const link = socialLinks.find((item) => item.id === id);
+
+    if (!link) return;
+
+    const confirmed = window.confirm(
+      "Are you sure you want to remove this social link?",
+    );
+
+    if (!confirmed) return;
+
+    try {
+      if (link.icon_url) {
+        const response = await fetch("/api/admin/media/delete", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            url: link.icon_url,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to remove social icon.");
+        }
+      }
+
+      setSocialLinks((current) => current.filter((item) => item.id !== id));
+    } catch (error) {
+      console.error("Social link removal error:", error);
+
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Failed to remove social link.",
+      );
+    }
   }
 
   async function uploadSocialIcon(
@@ -248,6 +286,10 @@ export function SiteSettingsForm({
     event.target.value = "";
 
     if (!file) return;
+
+    const currentLink = socialLinks.find((link) => link.id === id);
+
+    const oldIconUrl = currentLink?.icon_url?.trim() ?? "";
 
     setUploading(true);
 
@@ -268,7 +310,35 @@ export function SiteSettingsForm({
         throw new Error(data.error || "Icon upload failed.");
       }
 
-      updateSocialLink(id, "icon_url", data.url as string);
+      const newIconUrl = data.url as string;
+
+      updateSocialLink(id, "icon_url", newIconUrl);
+
+      /*
+       * Delete the previous uploaded icon after
+       * the replacement upload succeeds.
+       */
+      if (oldIconUrl && oldIconUrl !== newIconUrl) {
+        try {
+          const deleteResponse = await fetch("/api/admin/media/delete", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              url: oldIconUrl,
+            }),
+          });
+
+          const deleteData = await deleteResponse.json();
+
+          if (!deleteResponse.ok) {
+            console.error("Old social icon cleanup failed:", deleteData.error);
+          }
+        } catch (deleteError) {
+          console.error("Old social icon cleanup failed:", deleteError);
+        }
+      }
     } catch (error) {
       alert(error instanceof Error ? error.message : "Icon upload failed.");
     } finally {
@@ -288,13 +358,31 @@ export function SiteSettingsForm({
     if (!item) return;
 
     const confirmed = window.confirm(
-      "Are you sure you want to remove this hero image?",
+      item.type === "youtube"
+        ? "Are you sure you want to remove this YouTube video?"
+        : "Are you sure you want to remove this hero image?",
     );
 
     if (!confirmed) return;
 
     try {
-      const response = await fetch("/api/admin/cloudinary/delete", {
+      /*
+       * YouTube videos are not uploaded media.
+       * Only remove them from the hero media list.
+       */
+      if (item.type === "youtube") {
+        setMedia((current) =>
+          current.filter((_, itemIndex) => itemIndex !== index),
+        );
+
+        return;
+      }
+
+      /*
+       * Uploaded images must also be physically removed
+       * from ImageKit / Cloudinary.
+       */
+      const response = await fetch("/api/admin/media/delete", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -314,13 +402,14 @@ export function SiteSettingsForm({
         current.filter((_, itemIndex) => itemIndex !== index),
       );
     } catch (error) {
-      console.error("Hero image removal error:", error);
+      console.error("Hero media removal error:", error);
 
       alert(
-        error instanceof Error ? error.message : "Failed to remove hero image.",
+        error instanceof Error ? error.message : "Failed to remove hero media.",
       );
     }
   }
+
   function addYouTubeHero() {
     const url = youtubeUrl.trim();
 
@@ -466,7 +555,7 @@ export function SiteSettingsForm({
     if (!confirmed) return;
 
     try {
-      const response = await fetch("/api/admin/cloudinary/delete", {
+      const response = await fetch("/api/admin/media/delete", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -764,8 +853,8 @@ export function SiteSettingsForm({
 
               <p className="text-sm text-muted-foreground">
                 {uploading
-                  ? "Uploading to Cloudinary..."
-                  : "Upload images only. Images are stored in Cloudinary; only their URLs are saved in Supabase."}
+                  ? "Uploading..."
+                  : "Upload images only. Only their URLs are saved in Supabase."}
               </p>
             </div>
 
@@ -776,12 +865,12 @@ export function SiteSettingsForm({
                     key={`${item.url}-${index}`}
                     className="relative w-48 shrink-0 overflow-hidden rounded-lg border"
                   >
-                    <Image
+                    <SafeImage
                       src={item.url}
                       alt={`Hero image ${index + 1}`}
                       width={300}
                       height={300}
-                      unoptimized
+                      deliveryWidth={300}
                       className="aspect-square w-full object-cover"
                     />
 
@@ -1047,7 +1136,7 @@ export function SiteSettingsForm({
 
               <p className="text-xs text-muted-foreground">
                 {uploading
-                  ? "Uploading to Cloudinary..."
+                  ? "Uploading..."
                   : "You can upload multiple customer review images."}
               </p>
             </div>
@@ -1061,12 +1150,12 @@ export function SiteSettingsForm({
                         key={`${url}-${index}`}
                         className="relative w-48 shrink-0 overflow-hidden rounded-lg border"
                       >
-                        <Image
+                        <SafeImage
                           src={url}
                           alt={`Customer review ${index + 1}`}
                           width={300}
                           height={300}
-                          unoptimized
+                          deliveryWidth={300}
                           className="aspect-square w-full object-cover"
                         />
 
@@ -1096,10 +1185,6 @@ export function SiteSettingsForm({
         {/* =====================================================
             SOCIAL MEDIA
         ====================================================== */}
-
-        {/* =====================================================
-    SOCIAL MEDIA
-====================================================== */}
 
         <Card>
           <CardHeader>
@@ -1202,21 +1287,16 @@ export function SiteSettingsForm({
                             <div className="flex items-center gap-4">
                               {/* CURRENT ICON */}
 
-                              {link.icon_url ? (
-                                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full border">
-                                  <Image
-                                    src={link.icon_url}
-                                    alt={link.name || "Social icon"}
-                                    fill
-                                    unoptimized
-                                    className="object-cover"
-                                  />
-                                </div>
-                              ) : (
-                                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border text-xs text-muted-foreground">
-                                  No icon
-                                </div>
-                              )}
+                              <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full border">
+                                <SafeImage
+                                  src={link.icon_url}
+                                  alt={link.name || "Social icon"}
+                                  width={56}
+                                  height={56}
+                                  deliveryWidth={300}
+                                  className="h-full w-full object-cover"
+                                />
+                              </div>
 
                               {/* UPLOAD */}
 
@@ -1396,7 +1476,9 @@ export function SiteSettingsForm({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="shipping-price">Shipping price ({CURRENCY_SYMBOL})</Label>
+                  <Label htmlFor="shipping-price">
+                    Shipping price ({CURRENCY_SYMBOL})
+                  </Label>
 
                   <Input
                     id="shipping-price"

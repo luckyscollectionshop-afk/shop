@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import AddToCartButton from "@/components/storefront/add-to-cart-button";
 import ProductGallery from "@/components/storefront/product-gallery";
 import type { Metadata } from "next";
-import Image from "next/image";
+import SafeImage from "@/components/storefront/safe-image";
 import { CURRENCY_SYMBOL, SHOP_NAME } from "@/app/constants";
 
 type DisplaySettings = {
@@ -250,11 +250,12 @@ export default async function ProductPage({
                     className="inline-flex items-center gap-2 rounded-full bg-secondary px-2 py-1 text-sm text-secondary-foreground hover:bg-secondary/80"
                   >
                     {category.image_url ? (
-                      <Image
+                      <SafeImage
                         src={category.image_url}
                         alt=""
                         width={28}
                         height={28}
+                        deliveryWidth={300}
                         className="h-7 w-7 rounded-full object-cover"
                       />
                     ) : null}
@@ -274,7 +275,9 @@ export default async function ProductPage({
                 <p className="mt-3 text-xl font-medium">
                   {salePrice !== null ? (
                     <>
-                      <span>{CURRENCY_SYMBOL} {salePrice.toFixed(2)}</span>
+                      <span>
+                        {CURRENCY_SYMBOL} {salePrice.toFixed(2)}
+                      </span>
 
                       <span className="ml-3 text-base text-muted-foreground line-through">
                         {CURRENCY_SYMBOL} {Number(product.price).toFixed(2)}

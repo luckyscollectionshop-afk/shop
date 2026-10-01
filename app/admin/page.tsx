@@ -27,6 +27,12 @@ const adminCards = [
     href: "/admin/analytics",
     icon: "📊",
   },
+  {
+    title: "ImageKit",
+    description: "View usage and control ImageKit protection.",
+    href: "/admin/imagekit",
+    icon: "🖼️",
+  },
 ];
 
 export default async function AdminPage() {

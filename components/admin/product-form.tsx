@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import SafeImage from "@/components/storefront/safe-image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -145,11 +145,11 @@ export function ProductForm({
       return;
     }
 
-    // Existing Cloudinary image
+    // Existing Cloudinary image 
     if (!window.confirm("Delete this image permanently?")) return;
 
     try {
-      const response = await fetch("/api/admin/cloudinary/delete", {
+      const response = await fetch("/api/admin/media/delete", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -318,7 +318,7 @@ export function ProductForm({
     if (!name.trim()) return alert("Please enter a product name.");
     if (!price || Number(price) <= 0)
       return alert("Please enter a valid price.");
-    if (!images.length) return alert("Please add at least one product image.");
+    // if (!images.length) return alert("Please add at least one product image.");
     if (images.some((image) => !image.url))
       return alert("Please upload all product images before saving.");
     setSaving(true);
@@ -372,7 +372,7 @@ export function ProductForm({
           );
         if (addCategoriesError) throw addCategoriesError;
       }
-      router.push("/admin");
+      router.push("/admin/products");
       router.refresh();
     } catch (error) {
       alert(error instanceof Error ? error.message : "Failed to save product.");
@@ -479,12 +479,12 @@ export function ProductForm({
                       key={`${image.preview}-${index}`}
                       className="relative overflow-hidden rounded-lg border"
                     >
-                      <Image
+                      <SafeImage
                         src={image.preview}
                         alt={`Product image ${index + 1}`}
                         width={300}
                         height={300}
-                        unoptimized
+                        deliveryWidth={300}
                         className="aspect-square w-full object-cover"
                       />
                       <Button

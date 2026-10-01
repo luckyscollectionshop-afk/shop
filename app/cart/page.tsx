@@ -1,4 +1,4 @@
-import Image from "next/image";
+import SafeImage from "@/components/storefront/safe-image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -29,27 +29,21 @@ export default async function CartPage() {
     redirect("/auth/login?redirectTo=/cart");
   }
 
-  const [
-    { data: profile },
-    { data: cart, error: cartError },
-    { data: siteSettings },
-  ] = await Promise.all([
-    supabase.from("profiles").select("role").eq("id", user.id).maybeSingle(),
+  const [{ data: cart, error: cartError }, { data: siteSettings }] =
+    await Promise.all([
+      supabase.from("carts").select("id").eq("user_id", user.id).maybeSingle(),
 
-    supabase.from("carts").select("id").eq("user_id", user.id).maybeSingle(),
-
-    supabase
-      .from("site_settings")
-      .select("catalog_mode")
-      .eq("id", true)
-      .maybeSingle(),
-  ]);
+      supabase
+        .from("site_settings")
+        .select("catalog_mode")
+        .eq("id", true)
+        .maybeSingle(),
+    ]);
 
   if (cartError) {
     throw new Error(cartError.message);
   }
 
-  const isAdmin = profile?.role === "admin";
   const catalogMode = siteSettings?.catalog_mode === true;
 
   /*
@@ -190,20 +184,14 @@ export default async function CartPage() {
                     key={item.id}
                     className="flex gap-4 rounded-xl border p-4"
                   >
-                    {image ? (
-                      <Image
-                        src={image}
-                        alt={product.name}
-                        width={120}
-                        height={120}
-                        unoptimized
-                        className="h-24 w-24 rounded-lg object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-24 w-24 items-center justify-center rounded-lg bg-muted text-xs text-muted-foreground">
-                        No image
-                      </div>
-                    )}
+                    <SafeImage
+                      src={image}
+                      alt={product.name}
+                      width={120}
+                      height={120}
+                      deliveryWidth={300}
+                      className="h-24 w-24 rounded-lg object-cover"
+                    />
 
                     <div className="min-w-0 flex-1">
                       <Link
@@ -236,7 +224,8 @@ export default async function CartPage() {
 
                     {!catalogMode && (
                       <div className="text-right font-medium">
-                        ${CURRENCY_SYMBOL} {(Number(price) * item.quantity).toFixed(2)}
+                        {CURRENCY_SYMBOL}{" "}
+                        {(Number(price) * item.quantity).toFixed(2)}
                       </div>
                     )}
                   </div>
@@ -254,14 +243,18 @@ export default async function CartPage() {
                   <div className="mt-5 flex justify-between text-sm">
                     <span className="text-muted-foreground">Subtotal</span>
 
-                    <span>{CURRENCY_SYMBOL} {subtotal.toFixed(2)}</span>
+                    <span>
+                      {CURRENCY_SYMBOL} {subtotal.toFixed(2)}
+                    </span>
                   </div>
 
                   <div className="mt-4 border-t pt-4">
                     <div className="flex justify-between font-semibold">
                       <span>Total</span>
 
-                      <span>{CURRENCY_SYMBOL} {subtotal.toFixed(2)}</span>
+                      <span>
+                        {CURRENCY_SYMBOL} {subtotal.toFixed(2)}
+                      </span>
                     </div>
                   </div>
                 </>

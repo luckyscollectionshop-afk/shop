@@ -13,7 +13,7 @@ import { SHOP_NAME } from "@/app/constants";
 
 export async function registerWebPushNotifications(
   navigateToAdminOrders?: () => void,
-) {
+): Promise<(() => void) | null> {
   try {
     /*
      * ---------------------------------------------------------
@@ -85,7 +85,7 @@ export async function registerWebPushNotifications(
  * ---------------------------------------------------------
  */
 
-onMessage(messaging, (payload) => {
+const unsubscribe = onMessage(messaging, (payload) => {
   const title =
     payload.notification?.title ??
     SHOP_NAME;
@@ -185,7 +185,7 @@ const serviceWorkerRegistration =
 
   
 
-    return token;
+   return unsubscribe;
   } catch (error) {
     console.error(
       "Web push registration error:",

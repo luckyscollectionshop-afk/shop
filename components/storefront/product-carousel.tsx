@@ -1,7 +1,7 @@
 "use client";
 
 import { CURRENCY_SYMBOL } from "@/app/constants";
-import Image from "next/image";
+import SafeImage from "@/components/storefront/safe-image";
 import Link from "next/link";
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 
@@ -28,6 +28,7 @@ function ProductCard({
   catalogMode?: boolean;
 }) {
   const showPrice = !catalogMode && product.display_settings?.price !== false;
+
   const image = product.images?.[0];
 
   return (
@@ -43,21 +44,15 @@ function ProductCard({
     >
       <div className="overflow-hidden rounded-xl border bg-card shadow-sm transition-transform duration-300 group-hover:scale-[1.04] group-hover:shadow-lg">
         <div className="relative">
-          {image ? (
-            <Image
-              src={image}
-              alt={product.name}
-              width={640}
-              height={640}
-              unoptimized
-              draggable={false}
-              className="aspect-square w-full object-cover"
-            />
-          ) : (
-            <div className="flex aspect-square items-center justify-center bg-muted text-sm text-muted-foreground">
-              No image
-            </div>
-          )}
+          <SafeImage
+            src={image}
+            alt={product.name}
+            width={300}
+            height={300}
+            deliveryWidth={300}  
+            draggable={false}
+            className="aspect-square w-full object-cover"
+          />
 
           {/* Custom sticker */}
           {product.sticker && (
@@ -88,7 +83,9 @@ function ProductCard({
             <div className="mt-1 text-sm">
               {product.sale_price != null ? (
                 <>
-                  <span>{CURRENCY_SYMBOL} {Number(product.sale_price).toFixed(2)}</span>
+                  <span>
+                    {CURRENCY_SYMBOL} {Number(product.sale_price).toFixed(2)}
+                  </span>
 
                   <span className="ml-2 text-muted-foreground line-through">
                     {CURRENCY_SYMBOL} {Number(product.price).toFixed(2)}
@@ -118,6 +115,7 @@ export function ProductCarousel({
   const [dragging, setDragging] = useState(false);
 
   const animationFrame = useRef<number | null>(null);
+
   const lastTime = useRef<number | null>(null);
 
   const mouseDown = useRef(false);
@@ -193,7 +191,9 @@ export function ProductCarousel({
   function handleMouseMove(event: MouseEvent<HTMLDivElement>) {
     const container = containerRef.current;
 
-    if (!container || !mouseDown.current) return;
+    if (!container || !mouseDown.current) {
+      return;
+    }
 
     const distance = event.clientX - startX.current;
 

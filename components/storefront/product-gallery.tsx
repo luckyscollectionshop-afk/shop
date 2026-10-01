@@ -3,7 +3,9 @@
 import Image from "next/image";
 import { useState } from "react";
 import { X, Maximize2 } from "lucide-react";
+import SafeImage from "@/components/storefront/safe-image";
 import ProductShare from "@/components/storefront/product-share";
+import { FALLBACK_IMAGE } from "@/app/constants";
 
 type ProductGalleryProps = {
   productId: string;
@@ -108,13 +110,64 @@ function getYouTubeWatchUrl(url: string): string {
   }
 }
 
+function ProductGalleryImage({
+  image,
+  productName,
+  index,
+  onSelect,
+}: {
+  image: string;
+  productName: string;
+  index: number;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className="relative block aspect-square w-full cursor-zoom-in"
+      aria-label={`View ${productName} image ${index + 1}`}
+    >
+      <SafeImage
+        src={image}
+        alt={`${productName} ${index + 1}`}
+        width={800}
+        height={800}
+        deliveryWidth={800}
+        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+      />
+    </button>
+  );
+}
+
+function LargeProductImage({
+  image,
+  productName,
+}: {
+  image: string;
+  productName: string;
+}) {
+  return (
+    <SafeImage
+      src={image}
+      alt={productName}
+      width={800}
+      height={800}
+      deliveryWidth={800}
+      priority
+      className="h-full w-full object-contain"
+    />
+  );
+}
+
 export default function ProductGallery({
   productId,
   productName,
   images,
   videos,
 }: ProductGalleryProps) {
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedImage, setSelectedImage] =
+    useState<string | null>(null);
 
   return (
     <>
@@ -128,21 +181,12 @@ export default function ProductGallery({
                 className="group relative overflow-hidden rounded-xl border bg-muted"
               >
                 {/* Image */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedImage(image)}
-                  className="relative block aspect-square w-full cursor-zoom-in"
-                  aria-label={`View ${productName} image ${index + 1}`}
-                >
-                  <Image
-                    src={image}
-                    alt={`${productName} ${index + 1}`}
-                    fill
-                    sizes="(max-width: 640px) 100vw, 50vw"
-                    unoptimized
-                    className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-                  />
-                </button>
+                <ProductGalleryImage
+                  image={image}
+                  productName={productName}
+                  index={index}
+                  onSelect={() => setSelectedImage(image)}
+                />
 
                 {/* Image controls */}
                 <div className="absolute right-2 top-2 flex gap-2">
@@ -173,15 +217,24 @@ export default function ProductGallery({
             ))}
           </div>
         ) : (
-          <div className="flex aspect-square items-center justify-center rounded-xl bg-muted text-muted-foreground">
-            No image available
+          <div className="relative aspect-square overflow-hidden rounded-xl border bg-muted">
+            <Image
+              src={FALLBACK_IMAGE}
+              alt={productName}
+              fill
+              sizes="(max-width: 640px) 100vw, 50vw"
+              unoptimized
+              className="object-contain"
+            />
           </div>
         )}
 
         {/* YouTube Videos */}
         {videos.length > 0 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Product videos</h2>
+            <h2 className="text-lg font-semibold">
+              Product videos
+            </h2>
 
             <div className="space-y-4">
               {videos.map((url, index) => {
@@ -199,7 +252,9 @@ export default function ProductGallery({
                         <div className="aspect-video">
                           <iframe
                             src={embedUrl}
-                            title={`${productName} video ${index + 1}`}
+                            title={`${productName} video ${
+                              index + 1
+                            }`}
                             className="h-full w-full"
                             loading="lazy"
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -267,14 +322,9 @@ export default function ProductGallery({
             className="relative h-[90vh] w-full max-w-5xl"
             onClick={(event) => event.stopPropagation()}
           >
-            <Image
-              src={selectedImage}
-              alt={productName}
-              fill
-              sizes="90vw"
-              unoptimized
-              className="object-contain"
-              priority
+            <LargeProductImage
+              image={selectedImage}
+              productName={productName}
             />
 
             {/* Close */}

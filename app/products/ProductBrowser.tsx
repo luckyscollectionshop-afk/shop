@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
@@ -14,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Sparkles, Loader2 } from "lucide-react";
 import { CURRENCY_SYMBOL } from "../constants";
+import SafeImage from "@/components/storefront/safe-image";
 
 type Product = {
   id: string;
@@ -33,6 +33,28 @@ type Category = {
   name: string;
   slug: string;
 };
+
+
+function ProductImage({
+  image,
+  productName,
+}: {
+  image: string | null;
+  productName: string;
+}) {
+  return (
+    <SafeImage
+      src={image}
+      alt={productName}
+      width={300}
+      height={300}
+      deliveryWidth={300}
+      className="aspect-square w-full object-cover transition-transform duration-500 group-hover:scale-105"
+    />
+  );
+}
+
+
 
 export default function ProductBrowser({
   products,
@@ -201,48 +223,48 @@ export default function ProductBrowser({
           </Button>
         </div>
 
-            {!catalogMode && (
-        <Select
-          value={sortBy}
-          onValueChange={(value) => {
-            if (value) setSortBy(value);
-          }}
-        >
-          <SelectTrigger className="w-full sm:w-[190px]">
-            <SelectValue placeholder="Sort by" />
-          </SelectTrigger>
+        {!catalogMode && (
+          <Select
+            value={sortBy}
+            onValueChange={(value) => {
+              if (value) setSortBy(value);
+            }}
+          >
+            <SelectTrigger className="w-full sm:w-[190px]">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
 
-          <SelectContent className="z-50 min-w-[190px] rounded-xl border bg-background p-1 shadow-xl">
-            <SelectItem
-              value="newest"
-              className="cursor-pointer rounded-lg py-2.5"
-            >
-              Newest
-            </SelectItem>
+            <SelectContent className="z-50 min-w-[190px] rounded-xl border bg-background p-1 shadow-xl">
+              <SelectItem
+                value="newest"
+                className="cursor-pointer rounded-lg py-2.5"
+              >
+                Newest
+              </SelectItem>
 
-            <SelectItem
-              value="most-expensive"
-              className="cursor-pointer rounded-lg py-2.5"
-            >
-              Most expensive
-            </SelectItem>
+              <SelectItem
+                value="most-expensive"
+                className="cursor-pointer rounded-lg py-2.5"
+              >
+                Most expensive
+              </SelectItem>
 
-            <SelectItem
-              value="least-expensive"
-              className="cursor-pointer rounded-lg py-2.5"
-            >
-              Least expensive
-            </SelectItem>
+              <SelectItem
+                value="least-expensive"
+                className="cursor-pointer rounded-lg py-2.5"
+              >
+                Least expensive
+              </SelectItem>
 
-            <SelectItem
-              value="oldest"
-              className="cursor-pointer rounded-lg py-2.5"
-            >
-              Oldest
-            </SelectItem>
-          </SelectContent>
-        </Select> 
-            )}
+              <SelectItem
+                value="oldest"
+                className="cursor-pointer rounded-lg py-2.5"
+              >
+                Oldest
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {aiUnavailable && (
@@ -326,20 +348,7 @@ export default function ProductBrowser({
               >
                 {/* Image */}
                 <div className="relative overflow-hidden bg-muted">
-                  {image ? (
-                    <Image
-                      src={image}
-                      alt={product.name}
-                      width={600}
-                      height={600}
-                      unoptimized
-                      className="aspect-square w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                  ) : (
-                    <div className="flex aspect-square items-center justify-center text-sm text-muted-foreground">
-                      No image
-                    </div>
-                  )}
+                  <ProductImage image={image} productName={product.name} />
 
                   {/* Custom sticker */}
                   {product.sticker && (
