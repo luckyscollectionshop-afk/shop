@@ -380,7 +380,7 @@ export function SiteSettingsForm({
 
       /*
        * Uploaded images must also be physically removed
-       * from ImageKit / Cloudinary.
+       * from ImageKit.
        */
       const response = await fetch("/api/admin/media/delete", {
         method: "POST",

@@ -11,36 +11,26 @@ export async function POST(request: Request) {
     // Authentication
     // -------------------------------------------------------
 
-    const authorization =
-      request.headers.get("authorization");
+    const authorization = request.headers.get("authorization");
 
-    const accessToken =
-      authorization?.startsWith("Bearer ")
-        ? authorization.slice(7)
-        : undefined;
+    const accessToken = authorization?.startsWith("Bearer ")
+      ? authorization.slice(7)
+      : undefined;
 
-    const { user, isAdmin } =
-      await requireAdmin(accessToken);
+    const { user, isAdmin } = await requireAdmin(accessToken);
 
     if (!user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 },
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     if (!isAdmin) {
-      return NextResponse.json(
-        { error: "Forbidden" },
-        { status: 403 },
-      );
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     // -------------------------------------------------------
     // ImageKit protection
     // -------------------------------------------------------
 
-    const imageKitStatus =
-      await getImageKitProtectionStatus();
+    const imageKitStatus = await getImageKitProtectionStatus();
 
     if (!imageKitStatus.enabled) {
       return NextResponse.json(
@@ -48,10 +38,8 @@ export async function POST(request: Request) {
           error:
             "ImageKit usage protection is active. Image uploads are currently disabled to protect the free-tier account.",
           code: "IMAGEKIT_DISABLED",
-          reason:
-            imageKitStatus.disabledReason,
-          bandwidthPercent:
-            imageKitStatus.bandwidthPercent,
+          reason: imageKitStatus.disabledReason,
+          bandwidthPercent: imageKitStatus.bandwidthPercent,
         },
         { status: 503 },
       );
@@ -66,10 +54,7 @@ export async function POST(request: Request) {
     const folder = formData.get("folder");
 
     if (!file) {
-      return NextResponse.json(
-        { error: "No file provided" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
     // -------------------------------------------------------
@@ -77,10 +62,7 @@ export async function POST(request: Request) {
     // -------------------------------------------------------
 
     if (file.size > MAX_FILE_SIZE) {
-      const sizeInMB = (
-        file.size /
-        (1024 * 1024)
-      ).toFixed(2);
+      const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
 
       return NextResponse.json(
         {
@@ -146,42 +128,40 @@ export async function POST(request: Request) {
     // Convert File -> Buffer
     // -------------------------------------------------------
 
-const bytes = await file.arrayBuffer();
-const base64File = Buffer.from(bytes).toString("base64");
+    const bytes = await file.arrayBuffer();
+    const base64File = Buffer.from(bytes).toString("base64");
 
     // -------------------------------------------------------
     // Upload to ImageKit
     //
-    // TEST SETTINGS:
-    // - maximum width: 1200px
-    // - quality: 75
+    // Stored master:
+    // - maximum width: 800px
+    // - quality: 60
     //
-    // pre transformation means ImageKit applies this before
-    // storing the resulting image in the Media Library.
+    // The pre-transformation is applied before the image
+    // is stored in the ImageKit Media Library.
     // -------------------------------------------------------
 
-   const result = await imagekit.files.upload({
-  file: base64File,
-  fileName: file.name || `image-${Date.now()}`,
-  folder: imageKitFolder,
+    const result = await imagekit.files.upload({
+      file: base64File,
+      fileName: file.name || `image-${Date.now()}`,
+      folder: imageKitFolder,
 
-  transformation: {
-    pre: "w-800,q-60",
-  },
+      transformation: {
+        pre: "w-800,q-60",
+      },
 
-  useUniqueFileName: true,
-});
+      useUniqueFileName: true,
+    });
 
     // -------------------------------------------------------
     // Useful test information
     // -------------------------------------------------------
 
     const storedSizeBytes = result.size ?? 0;
-    const storedSizeKB =
-      Math.round((storedSizeBytes / 1024) * 100) / 100;
+    const storedSizeKB = Math.round((storedSizeBytes / 1024) * 100) / 100;
 
-    const originalSizeKB =
-      Math.round((file.size / 1024) * 100) / 100;
+    const originalSizeKB = Math.round((file.size / 1024) * 100) / 100;
 
     console.log("ImageKit upload test:", {
       originalSizeKB,
@@ -195,8 +175,8 @@ const base64File = Buffer.from(bytes).toString("base64");
     // -------------------------------------------------------
     // Success
     //
-    // Keep "public_id" temporarily for compatibility with
-    // the old Cloudinary response shape.
+    // public_id currently carries the ImageKit fileId for
+    // compatibility with existing upload consumers.
     // -------------------------------------------------------
 
     return NextResponse.json({
@@ -215,17 +195,11 @@ const base64File = Buffer.from(bytes).toString("base64");
       height: result.height ?? null,
     });
   } catch (error) {
-    console.error(
-      "ImageKit upload error:",
-      error,
-    );
+    console.error("ImageKit upload error:", error);
 
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Upload failed",
+        error: error instanceof Error ? error.message : "Upload failed",
       },
       { status: 500 },
     );

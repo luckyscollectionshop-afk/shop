@@ -145,7 +145,7 @@ export function ProductForm({
       return;
     }
 
-    // Existing Cloudinary image 
+    // Existing uploaded  image 
     if (!window.confirm("Delete this image permanently?")) return;
 
     try {

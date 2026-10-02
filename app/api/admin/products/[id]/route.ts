@@ -1,35 +1,117 @@
 import { NextResponse } from "next/server";
-import cloudinary from "@/lib/cloudinary";
+
+import imagekit from "@/lib/imagekit";
 import { requireAdmin } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
-function getCloudinaryPublicId(url: string) {
+const IMAGEKIT_HOSTNAME = "ik.imagekit.io";
+const IMAGEKIT_PATH_PREFIX =
+  "/luckycharmcreations/";
+
+async function deleteImageKitImage(
+  url: string,
+) {
+  let parsedUrl: URL;
+
   try {
-    const parsed = new URL(url);
-    const parts = parsed.pathname.split("/");
-    const uploadIndex = parts.indexOf("upload");
-
-    if (uploadIndex === -1) return null;
-
-    let publicId = parts.slice(uploadIndex + 1).join("/");
-
-    // Remove Cloudinary version, e.g. /v1234567890/
-    publicId = publicId.replace(/^v\d+\//, "");
-
-    // Remove file extension
-    publicId = publicId.replace(/\.[^/.]+$/, "");
-
-    return publicId;
+    parsedUrl = new URL(url);
   } catch {
-    return null;
+    return;
   }
+
+  const isLuckyImageKitImage =
+    parsedUrl.hostname ===
+      IMAGEKIT_HOSTNAME &&
+    parsedUrl.pathname.startsWith(
+      IMAGEKIT_PATH_PREFIX,
+    );
+
+  if (!isLuckyImageKitImage) {
+    return;
+  }
+
+  let filePath =
+    parsedUrl.pathname.slice(
+      IMAGEKIT_PATH_PREFIX.length,
+    );
+
+  filePath =
+    decodeURIComponent(filePath);
+
+  // Support transformed ImageKit URLs defensively.
+  filePath = filePath.replace(
+    /^tr:[^/]+\//,
+    "",
+  );
+
+  filePath = `/${filePath}`;
+
+  const lastSlashIndex =
+    filePath.lastIndexOf("/");
+
+  const folderPath =
+    lastSlashIndex > 0
+      ? filePath.slice(
+          0,
+          lastSlashIndex,
+        )
+      : "/";
+
+  const fileName =
+    filePath.slice(
+      lastSlashIndex + 1,
+    );
+
+  const escapedFileName =
+    fileName
+      .replace(/\\/g, "\\\\")
+      .replace(/"/g, '\\"');
+
+  const assets =
+    await imagekit.assets.list({
+      type: "file",
+      path: folderPath,
+      searchQuery: `name = "${escapedFileName}"`,
+      limit: 100,
+    });
+
+  const file = assets.find(
+    (asset) => {
+      if (!("filePath" in asset)) {
+        return false;
+      }
+
+      return (
+        asset.filePath === filePath
+      );
+    },
+  );
+
+  if (
+    !file ||
+    !("fileId" in file) ||
+    !file.fileId
+  ) {
+    console.warn(
+      `ImageKit file not found during product deletion: ${filePath}`,
+    );
+
+    return;
+  }
+
+  await imagekit.files.delete(
+    file.fileId,
+  );
 }
 
 export async function DELETE(
   _request: Request,
-  context: RouteContext<"/api/admin/products/[id]">,
+  context: RouteContext<
+    "/api/admin/products/[id]"
+  >,
 ) {
-  const { user, isAdmin } = await requireAdmin();
+  const { user, isAdmin } =
+    await requireAdmin();
 
   if (!user) {
     return NextResponse.json(
@@ -45,11 +127,17 @@ export async function DELETE(
     );
   }
 
-  const { id } = await context.params;
-  const supabase = await createClient();
+  const { id } =
+    await context.params;
 
-  // Get product images before deleting the product
-  const { data: product, error: productFetchError } = await supabase
+  const supabase =
+    await createClient();
+
+  // Get product images before deleting the product.
+  const {
+    data: product,
+    error: productFetchError,
+  } = await supabase
     .from("products")
     .select("id, images")
     .eq("id", id)
@@ -57,7 +145,10 @@ export async function DELETE(
 
   if (productFetchError) {
     return NextResponse.json(
-      { error: productFetchError.message },
+      {
+        error:
+          productFetchError.message,
+      },
       { status: 500 },
     );
   }
@@ -69,51 +160,58 @@ export async function DELETE(
     );
   }
 
-  const imageUrls = Array.isArray(product.images)
-    ? product.images.filter(
-        (image): image is string => typeof image === "string",
-      )
-    : [];
+  const imageUrls =
+    Array.isArray(product.images)
+      ? product.images.filter(
+          (
+            image,
+          ): image is string =>
+            typeof image === "string",
+        )
+      : [];
 
-  // Delete product images from Cloudinary
+  /*
+   * Delete product images from ImageKit.
+   *
+   * Image cleanup should not prevent the product itself
+   * from being deleted if a remote file is already missing
+   * or ImageKit cleanup fails.
+   */
   for (const url of imageUrls) {
-    const publicId = getCloudinaryPublicId(url);
-
-    if (!publicId) continue;
-
     try {
-      const result = await cloudinary.uploader.destroy(publicId, {
-        resource_type: "image",
-      });
-
-    //  console.log(        `Cloudinary delete ${publicId}:`,        result.result,      );
+      await deleteImageKitImage(url);
     } catch (error) {
-      // Do not prevent product deletion if Cloudinary cleanup fails
       console.error(
-        `Failed to delete Cloudinary image ${publicId}:`,
+        `Failed to delete ImageKit image ${url}:`,
         error,
       );
     }
   }
 
-  // Remove category relationships
-  const { error: relationsError } = await supabase
+  // Remove category relationships.
+  const {
+    error: relationsError,
+  } = await supabase
     .from("product_categories")
     .delete()
     .eq("product_id", id);
 
   if (relationsError) {
     return NextResponse.json(
-      { error: relationsError.message },
+      {
+        error:
+          relationsError.message,
+      },
       { status: 500 },
     );
   }
 
-  // Delete product
-  const { error } = await supabase
-    .from("products")
-    .delete()
-    .eq("id", id);
+  // Delete product.
+  const { error } =
+    await supabase
+      .from("products")
+      .delete()
+      .eq("id", id);
 
   if (error) {
     return NextResponse.json(
@@ -122,5 +220,7 @@ export async function DELETE(
     );
   }
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({
+    success: true,
+  });
 }

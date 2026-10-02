@@ -3,10 +3,7 @@ const IMAGEKIT_PATH_PREFIX = "/luckycharmcreations/";
 
 type ImageWidth = 150 | 200 | 300 | 500 | 800;
 
-export function getImageUrl(
-  url: string | null | undefined,
-  width: ImageWidth,
-) {
+export function getImageUrl(url: string | null | undefined, width: ImageWidth) {
   if (!url) {
     return "";
   }
@@ -19,8 +16,8 @@ export function getImageUrl(
       parsedUrl.pathname.startsWith(IMAGEKIT_PATH_PREFIX);
 
     /*
-     * Existing Cloudinary images and any other external images
-     * must continue working exactly as they do today.
+     * Only transform Lucky's Collection ImageKit images.
+     * Any other URL is returned unchanged.
      */
     if (!isLuckyImageKitImage) {
       return url;
@@ -36,11 +33,11 @@ export function getImageUrl(
      * 300px:
      * https://ik.imagekit.io/luckycharmcreations/tr:w-300/shop/products/photo.jpg
      */
-    const pathWithoutEndpoint =
-      parsedUrl.pathname.slice(IMAGEKIT_PATH_PREFIX.length);
+    const pathWithoutEndpoint = parsedUrl.pathname.slice(
+      IMAGEKIT_PATH_PREFIX.length,
+    );
 
-    parsedUrl.pathname =
-      `${IMAGEKIT_PATH_PREFIX}tr:w-${width}/${pathWithoutEndpoint}`;
+    parsedUrl.pathname = `${IMAGEKIT_PATH_PREFIX}tr:w-${width}/${pathWithoutEndpoint}`;
 
     return parsedUrl.toString();
   } catch {

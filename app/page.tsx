@@ -64,57 +64,27 @@ const defaultSettings: SiteSettings = {
 export default async function Home() {
   const supabase = await createClient();
 
-  const [
-    {
-      data: { user },
-    },
-    { data: savedSettings },
-    { data: socialSettings },
-  ] = await Promise.all([
-    supabase.auth.getUser(),
+  const [{ data: savedSettings }, { data: socialSettings }] = await Promise.all(
+    [
+      supabase
+        .from("site_settings")
+        .select(
+          "theme, hero_title, hero_description, hero_media, homepage_category_ids, customer_review_images, catalog_mode",
+        )
+        .eq("id", true)
+        .maybeSingle(),
 
-    supabase
-      .from("site_settings")
-      .select(
-        "theme, hero_title, hero_description, hero_media, homepage_category_ids, customer_review_images, catalog_mode",
-      )
-      .eq("id", true)
-      .maybeSingle(),
-    supabase
-      .from("storefront_settings")
-      .select(
-        `
-       social_enabled,
-    social_links
-      `,
-      )
-      .maybeSingle(),
-  ]);
-
-  let isAdmin = false;
-  let cartCount = 0;
-
-  if (user) {
-    const [{ data: profile }, { data: cart }] = await Promise.all([
-      supabase.from("profiles").select("role").eq("id", user.id).maybeSingle(),
-
-      supabase.from("carts").select("id").eq("user_id", user.id).maybeSingle(),
-    ]);
-
-    isAdmin = profile?.role === "admin";
-
-    if (cart) {
-      const { data: cartItems } = await supabase
-        .from("cart_items")
-        .select("quantity")
-        .eq("cart_id", cart.id);
-
-      cartCount = (cartItems ?? []).reduce(
-        (total, item) => total + item.quantity,
-        0,
-      );
-    }
-  }
+      supabase
+        .from("storefront_settings")
+        .select(
+          `
+        social_enabled,
+        social_links
+        `,
+        )
+        .maybeSingle(),
+    ],
+  );
 
   const settings = {
     ...defaultSettings,
@@ -453,7 +423,7 @@ export default async function Home() {
                 {strip.products.length > 0 ? (
                   <ProductCarousel
                     products={strip.products as CarouselProduct[]}
-                     catalogMode={settings.catalog_mode}
+                    catalogMode={settings.catalog_mode}
                   />
                 ) : (
                   <p className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">

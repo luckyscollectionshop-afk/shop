@@ -40,7 +40,7 @@ export default function TestUploadPage() {
   return (
     <main className="p-10">
       <h1 className="text-2xl font-bold mb-6">
-        Cloudinary Upload Test
+        ImageKit  Upload Test
       </h1>
 
       <input
