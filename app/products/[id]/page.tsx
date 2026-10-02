@@ -7,6 +7,10 @@ import ProductGallery from "@/components/storefront/product-gallery";
 import type { Metadata } from "next";
 import SafeImage from "@/components/storefront/safe-image";
 import { CURRENCY_SYMBOL, SHOP_NAME } from "@/app/constants";
+import {
+  getCachedProductDetail,
+  getCachedProductMetadata,
+} from "@/lib/cache/product-detail";
 
 type DisplaySettings = {
   price?: boolean;
@@ -35,14 +39,7 @@ export async function generateMetadata({
 }: PageProps<"/products/[id]">): Promise<Metadata> {
   const { id } = await params;
 
-  const supabase = await createClient();
-
-  const { data: product } = await supabase
-    .from("products")
-    .select("name, description, images, price, sale_price")
-    .eq("id", id)
-    .eq("active", true)
-    .maybeSingle();
+  const product = await getCachedProductMetadata(id);
 
   if (!product) {
     return {
@@ -104,37 +101,14 @@ export default async function ProductPage({
     {
       data: { user },
     },
-    { data: product },
-    { data: siteSettings },
-  ] = await Promise.all([
-    supabase.auth.getUser(),
-
-    supabase
-      .from("products")
-      .select(
-        "id, name, description, size, price, sale_price, stock, weight_grams, height, width, depth, images, video_urls, display_settings, available_for_sale",
-      )
-      .eq("id", id)
-      .eq("active", true)
-      .maybeSingle(),
-
-    supabase
-      .from("site_settings")
-      .select("catalog_mode")
-      .eq("id", true)
-      .maybeSingle(),
-  ]);
+    { product, siteSettings, categoryLinks },
+  ] = await Promise.all([supabase.auth.getUser(), getCachedProductDetail(id)]);
 
   if (!product) {
     notFound();
   }
 
   const catalogMode = siteSettings?.catalog_mode === true;
-
-  const { data: categoryLinks } = await supabase
-    .from("product_categories")
-    .select("categories(id, name, slug, image_url)")
-    .eq("product_id", id);
 
   const categories = (categoryLinks ?? []).flatMap((link) => {
     const category = link.categories as Category | Category[] | null;
@@ -167,6 +141,7 @@ export default async function ProductPage({
   const images = (product.images ?? []) as string[];
 
   const videos = (product.video_urls ?? []) as string[];
+  const youtubePostUrls = (product.youtube_post_urls ?? []) as string[];
 
   const settings = product.display_settings as DisplaySettings | null;
 
@@ -327,6 +302,26 @@ export default async function ProductPage({
                 <Detail label="Weight" value={`${product.weight_grams} g`} />
               )}
             </div>
+
+            {youtubePostUrls.length > 0 && (
+              <div className="mt-6">
+                <p className="mb-2 text-sm font-medium">YouTube Posts</p>
+
+                <div className="flex flex-col gap-2">
+                  {youtubePostUrls.map((url, index) => (
+                    <a
+                      key={`${url}-${index}`}
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-fit text-sm font-medium text-primary underline underline-offset-4 hover:opacity-80"
+                    >
+                      View YouTube Post {index + 1} ↗
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <AddToCartButton
               productId={product.id}
